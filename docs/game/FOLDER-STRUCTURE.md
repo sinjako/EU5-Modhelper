@@ -23,13 +23,19 @@ Europa Universalis V/
 ```
 in_game/
 ├── common/           # Definition files (110 subfolders)
-├── events/           # Event definitions
+├── content_source/   # Map object content
+├── events/           # Event definitions (318 files)
+├── fonts/            # Font files
 ├── gfx/              # Graphics assets
-├── gui/              # UI definitions
-├── localization/     # Text translations
+├── gui/              # UI definitions (161 files)
 ├── map_data/         # Map definitions
-└── music/            # Audio files
+└── setup/            # Country starting data
 ```
+
+**Note:** Localization files are NOT in `in_game/`. They are in:
+- `game/loading_screen/localization/`
+- `game/main_menu/localization/`
+- Engine folders (`clausewitz/`, `jomini/`)
 
 ## common/ Subfolders (110 total)
 
@@ -267,9 +273,38 @@ in_game/
 | `city_materials/` | City texture materials |
 | `graphical_culture_types/` | Culture-specific graphics |
 
-## localization/ Structure
+## gui/ Structure
 
-13+ language folders:
-- `english/`, `french/`, `german/`, `spanish/`, `russian/`
-- `simp_chinese/`, `japanese/`, `korean/`
-- `polish/`, `turkish/`, `braz_por/`
+161 GUI definition files (`.gui` format) for UI modding:
+
+| File Pattern | Description |
+|--------------|-------------|
+| `*_lateralview.gui` | Side panel views |
+| `*_view.gui` | Main view windows |
+| `*_popup.gui` | Popup dialogs |
+| `*_header.gui` | Header components |
+| `cooltip*.gui` | Tooltip definitions |
+
+Key files:
+- `advances_lateralview.gui` - Tech tree UI
+- `building_view.gui` - Building interface
+- `character_lateralview.gui` - Character panel
+- `country_header.gui` - Country info header
+
+## setup/ Structure
+
+Country starting conditions:
+
+| Folder | Files | Description |
+|--------|-------|-------------|
+| `countries/` | 46 | Country color and tag definitions |
+
+Files organized by region: `british_isles.txt`, `anatolia.txt`, `balkans.txt`, etc.
+
+## Localization (Outside in_game/)
+
+Localization is NOT in `in_game/`. Located in:
+- `game/loading_screen/localization/`
+- `game/main_menu/localization/`
+
+Language folders: `english/`, `french/`, `german/`, `spanish/`, `russian/`, `simp_chinese/`, `japanese/`, `korean/`, `polish/`, `turkish/`, `braz_por/`
