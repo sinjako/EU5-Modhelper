@@ -31,6 +31,7 @@ Default Steam install: `C:\Program Files (x86)\Steam\steamapps\common\Europa Uni
 | [categories/laws.md](categories/laws.md) | Laws, policies |
 | [categories/disasters.md](categories/disasters.md) | Disasters, situations |
 | [categories/scripting.md](categories/scripting.md) | Script values, triggers, effects, traits |
+| [categories/events.md](categories/events.md) | Events, DHE, disaster chains, situations |
 
 ## Quick Stats
 
@@ -38,6 +39,8 @@ Default Steam install: `C:\Program Files (x86)\Steam\steamapps\common\Europa Uni
 |--------|-------|
 | Common subfolders | 110 |
 | Total definition files | 1,600+ |
+| Event files | 318 |
+| Events | 1,000+ |
 | Advances (technologies) | ~2,590 |
 | Religions | 80+ |
 | Cultures | 500+ |
