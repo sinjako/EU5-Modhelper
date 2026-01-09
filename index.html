@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EU5 Inspector</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <header class="header">
+        <h1>EU5 <span>Inspector</span></h1>
+        <div class="header-controls">
+            <button id="load-folder">Load EU5 Folder</button>
+            <span id="folder-info"></span>
+            <button id="debug-btn" style="background:#e5c07b;color:#000;margin-left:10px;display:none;">Debug</button>
+        </div>
+    </header>
+
+    <div class="toolbar">
+        <div class="categories" id="categories"></div>
+    </div>
+
+    <div class="search-row">
+        <div class="search-box" id="search"></div>
+        <div class="search-row-right">
+            <div class="items-count" id="items-count"></div>
+            <div class="filter-buttons">
+                <button class="filter-toggle-btn" id="filter-toggle" title="Toggle Filters">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M3 4h18v2H3V4zm3 7h12v2H6v-2zm3 7h6v2H9v-2z" fill="currentColor"/>
+                    </svg>
+                    <span>Filters</span>
+                </button>
+                <button class="filter-clear-btn" id="filter-clear" title="Clear All Filters">
+                    <svg viewBox="0 0 24 24" width="14" height="14">
+                        <path d="M18 6L6 18M6 6l12 12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="filters-dropdown" id="filters"></div>
+
+    <main class="main-content">
+        <div class="items-grid" id="items-grid"></div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="js/parser.js"></script>
+    <script src="js/loader.js"></script>
+    <script src="js/components/search.js"></script>
+    <script src="js/components/filters.js"></script>
+    <script src="js/components/item-card.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
