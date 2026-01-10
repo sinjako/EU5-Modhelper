@@ -13,6 +13,8 @@ Default Steam install: `C:\Program Files (x86)\Steam\steamapps\common\Europa Uni
 | Document | Description |
 |----------|-------------|
 | [FOLDER-STRUCTURE.md](FOLDER-STRUCTURE.md) | Complete game folder hierarchy |
+| [COMMON-FOLDERS.md](COMMON-FOLDERS.md) | All 110 common/ subfolders inventory |
+| [CROSS-REFERENCES.md](CROSS-REFERENCES.md) | How objects reference each other |
 | [SYNTAX.md](SYNTAX.md) | Paradox script syntax reference |
 
 ### Category Documentation
@@ -20,6 +22,7 @@ Default Steam install: `C:\Program Files (x86)\Steam\steamapps\common\Europa Uni
 | Document | Categories Covered |
 |----------|-------------------|
 | [categories/advances.md](categories/advances.md) | Technology trees, ages, unlocks |
+| [categories/ADVANCES-DETAILED.md](categories/ADVANCES-DETAILED.md) | Complete advances technical reference |
 | [categories/religions.md](categories/religions.md) | Religions, religion groups |
 | [categories/cultures.md](categories/cultures.md) | Cultures, culture groups, languages, ethnicities |
 | [categories/governments.md](categories/governments.md) | Government types, reforms, heir selections |

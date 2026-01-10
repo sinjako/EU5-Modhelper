@@ -56,6 +56,7 @@
         <button id="run-all">Run All Tests</button>
         <button id="run-parser">Test Parser</button>
         <button id="run-tree">Test Tree Builder</button>
+        <button id="run-filtering">Test Filtering</button>
         <button id="run-visual">Test Visual Layout</button>
     </div>
 
@@ -215,6 +216,13 @@
                 if (path.startsWith(advPath + '/') && path.endsWith('.txt') && !path.substring(advPath.length + 1).includes('/')) {
                     const text = await file.text();
                     const parsed = parser.parse(text);
+                    // Attach source file info
+                    const fileName = path.split('/').pop().replace('.txt', '');
+                    for (const key of Object.keys(parsed)) {
+                        if (!key.startsWith('_')) {
+                            parsed[key]._sourceFile = fileName;
+                        }
+                    }
                     Object.assign(state.rawData, parsed);
                     fileCount++;
                 }
@@ -248,7 +256,8 @@
                     era: item.age || 'unknown',
                     depth: item.depth,
                     requires: item.requires ? (typeof item.requires === 'string' ? [item.requires] : item.requires) : [],
-                    unlockedBy: []
+                    unlockedBy: [],
+                    raw: item
                 };
             }
 
@@ -285,6 +294,113 @@
                 return internalReqs.length === 0;
             });
             addResult(section, 'Age 2 has ~54 roots', age2Roots.length >= 50 && age2Roots.length <= 60, `${age2Roots.length} roots`);
+        }
+
+        // ========== FILTERING TESTS ==========
+        async function runFilteringTests() {
+            const section = addSection('Tech Tree Filtering Tests');
+
+            if (state.files.size === 0 || Object.keys(state.rawData).length === 0) {
+                addResult(section, 'Run Tree Builder tests first', null, 'Click "Test Tree Builder" first');
+                return;
+            }
+
+            const raw = state.rawData;
+            const keys = Object.keys(raw).filter(k => !k.startsWith('_'));
+
+            // Test 1: Identify country-specific advances (have 'potential' block)
+            const withPotential = keys.filter(k => raw[k].potential);
+            addResult(section, 'Find country-specific advances (with potential)',
+                withPotential.length > 0,
+                `${withPotential.length} found. Examples: ${withPotential.slice(0, 3).join(', ')}`);
+
+            // Test 2: Identify government-specific advances (have 'government' field)
+            const withGovernment = keys.filter(k => raw[k].government);
+            addResult(section, 'Find government-specific advances',
+                withGovernment.length > 0,
+                `${withGovernment.length} found. Examples: ${withGovernment.slice(0, 3).join(', ')}`);
+
+            // Test 3: flesh_is_weak should have government field
+            const fleshIsWeak = raw.flesh_is_weak;
+            addResult(section, 'flesh_is_weak exists', !!fleshIsWeak);
+            addResult(section, 'flesh_is_weak has government field',
+                !!fleshIsWeak?.government,
+                `government=${fleshIsWeak?.government}`);
+            addResult(section, 'flesh_is_weak should be filtered out',
+                fleshIsWeak?.government === 'theocracy',
+                'Should not appear in universal tree');
+
+            // Test 4: Identify choice advances (adm/dip/mil branches)
+            const withFor = keys.filter(k => raw[k].for);
+            addResult(section, 'Find choice advances (for field)',
+                withFor.length > 0,
+                `${withFor.length} found. Values: ${[...new Set(withFor.map(k => raw[k].for))].join(', ')}`);
+
+            // Test 5: Identify country-type specific advances
+            const withCountryType = keys.filter(k => raw[k].country_type);
+            addResult(section, 'Find country-type specific advances',
+                true,
+                `${withCountryType.length} found. Values: ${[...new Set(withCountryType.map(k => raw[k].country_type))].join(', ')}`);
+
+            // Test 6: Universal advances should have no restrictive fields
+            const restrictiveFields = ['potential', 'government', 'for', 'country_type'];
+            const universal = keys.filter(k => {
+                const item = raw[k];
+                return !restrictiveFields.some(f => item[f]);
+            });
+            addResult(section, 'Count universal advances',
+                universal.length > 400,
+                `${universal.length} universal out of ${keys.length} total`);
+
+            // Test 7: Universal advances with no requirements (should be ~46 roots)
+            const universalNoReqs = universal.filter(k => !raw[k].requires);
+            addResult(section, 'Universal advances without requires field',
+                universalNoReqs.length < 60,
+                `${universalNoReqs.length} found (should be ~46 root nodes)`);
+
+            // Test 8: Check for advances with requires pointing to filtered advances
+            const governmentAdvanceKeys = new Set(withGovernment);
+            const potentialAdvanceKeys = new Set(withPotential);
+            const forAdvanceKeys = new Set(withFor);
+            const countryTypeAdvanceKeys = new Set(withCountryType);
+            const orphaned = universal.filter(k => {
+                const item = raw[k];
+                if (!item.requires) return false;
+                const reqs = typeof item.requires === 'string' ? [item.requires] :
+                             Array.isArray(item.requires) ? item.requires : [];
+                // Check if ALL requirements are to filtered advances
+                return reqs.length > 0 && reqs.every(r =>
+                    governmentAdvanceKeys.has(r) || potentialAdvanceKeys.has(r) ||
+                    forAdvanceKeys.has(r) || countryTypeAdvanceKeys.has(r) || !raw[r]
+                );
+            });
+            addResult(section, 'Orphaned advances (reqs all filtered)',
+                orphaned.length === 0,
+                `${orphaned.length} found: ${orphaned.slice(0, 5).join(', ')}`);
+
+            // Test 9: Log all unique government types
+            const govTypes = [...new Set(withGovernment.map(k => raw[k].government))];
+            addResult(section, 'Government types found',
+                govTypes.length > 0,
+                govTypes.join(', '));
+
+            // Test 10: Analyze what fields non-universal advances have
+            const nonUniversal = keys.filter(k => !universal.includes(k));
+            const fieldCounts = {};
+            for (const k of nonUniversal) {
+                for (const field of Object.keys(raw[k])) {
+                    if (!field.startsWith('_')) {
+                        fieldCounts[field] = (fieldCounts[field] || 0) + 1;
+                    }
+                }
+            }
+            const topFields = Object.entries(fieldCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10)
+                .map(([f, c]) => `${f}(${c})`);
+            addResult(section, 'Common fields in non-universal advances',
+                true,
+                topFields.join(', '));
         }
 
         // ========== VISUAL LAYOUT TESTS ==========
@@ -345,6 +461,7 @@
             updateSummary();
             await runParserTests();
             await runTreeTests();
+            await runFilteringTests();
             await runVisualTests();
         };
 
@@ -358,6 +475,12 @@
             output.innerHTML = '';
             state.results = { pass: 0, fail: 0, pending: 0 };
             await runTreeTests();
+        };
+
+        document.getElementById('run-filtering').onclick = async () => {
+            output.innerHTML = '';
+            state.results = { pass: 0, fail: 0, pending: 0 };
+            await runFilteringTests();
         };
 
         document.getElementById('run-visual').onclick = async () => {

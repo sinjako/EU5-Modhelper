@@ -3,123 +3,106 @@
 Technology tree definitions for EU5.
 
 **Path:** `game/in_game/common/advances/`
+**Total Files:** 189
+**See Also:** [ADVANCES-DETAILED.md](ADVANCES-DETAILED.md) for complete technical documentation
 
 ## File Organization
 
-| Pattern | Purpose |
-|---------|---------|
-| `0_age_of_*.txt` | Core age-specific advances |
-| `1_building_unlocks.txt` | Building-focused advances |
-| `2_army_unlocks.txt` | Military unit advances |
-| `2_ship_unlocks.txt` | Naval unit advances |
-| `3_*_unlocks.txt` | Special unlock advances |
-| `4_choices_*.txt` | Choice nodes (adm/dip/mil) |
-| Country/region files | Country-specific advances |
+### Universal Tech Tree (6 files)
+| File | Era |
+|------|-----|
+| `0_age_of_traditions.txt` | Age 1 |
+| `0_age_of_renaissance.txt` | Age 2 |
+| `0_age_of_discovery.txt` | Age 3 |
+| `0_age_of_reformation.txt` | Age 4 |
+| `0_age_of_absolutism.txt` | Age 5 |
+| `0_age_of_revolutions.txt` | Age 6 |
+
+### Restricted Files (183 files)
+| Pattern | Count | Restriction |
+|---------|-------|-------------|
+| `country_*.txt` | 110 | Country-specific (has_or_had_tag) |
+| `government_*.txt` | 4 | Government type |
+| `culture_*.txt` | 34 | Culture/culture group |
+| `religion_*.txt` | 8 | Religion specific |
+| `region_*.txt`, `area_*.txt` | 6 | Geographic |
+| `1_*`, `2_*`, `3_*` | 8 | Unlock advances |
+| `4_choices_*.txt` | 3 | ADM/DIP/MIL choices |
+| Other | 10 | Special cases |
 
 ## Key Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `age` | string | Era assignment (`age_1_traditions` through `age_6_revolutions`) |
-| `requires` | string | Parent advance dependency |
-| `depth` | number | Root marker (`depth = 0` marks tree roots) |
-| `icon` | string | Icon name (maps to `gfx/interface/advance/`) |
-| `research_cost` | number | Base research cost multiplier |
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `age` | Era assignment | `age_1_traditions` |
+| `depth` | Root indicator | `depth = 0` (only on roots) |
+| `requires` | Dependency | `requires = written_alphabet` |
+| `potential` | Country/condition filter | `{ has_or_had_tag = ENG }` |
+| `government` | Government type filter | `monarchy` |
+| `for` | Choice type filter | `adm`, `dip`, `mil` |
+| `country_type` | Country archetype filter | `army` |
+
+## Filtering for Universal Tech Tree
+
+**Method 1: Filter by source file (recommended)**
+```javascript
+const isUniversal = filename.startsWith('0_age_of_');
+```
+
+**Method 2: Filter by restrictive fields**
+```javascript
+const isUniversal = !item.potential && !item.government &&
+                    !item.for && !item.country_type;
+```
+
+## Root Advances
+
+24 root advances with `depth = 0`:
+
+**Age 1 (7 roots):** written_alphabet, agriculture_advance, mining_advance, ship_building_advance, organized_religion, meritocracy_advance, feudalism_advance
+
+**Later Ages:** Additional roots tied to institutions
 
 ## Unlock Fields
 
 | Field | Unlocks |
 |-------|---------|
-| `unlock_building` | Buildings (e.g., `cathedral`) |
-| `unlock_law` | Laws |
-| `unlock_unit` | Military units (e.g., `a_footmen`) |
+| `unlock_building` | Buildings |
+| `unlock_unit` | Military units |
 | `unlock_levy` | Levy types |
-| `unlock_production_method` | Production methods |
+| `unlock_law` | Laws |
 | `unlock_government_reform` | Government reforms |
-| `unlock_subject_type` | Subject types (e.g., `vassal`) |
-| `unlock_country_interaction` | Country interactions |
+| `unlock_estate_privilege` | Estate privileges |
+| `unlock_production_method` | Production methods |
+| `unlock_road_type` | Road types |
+| `unlock_policy` | Policies |
+| `unlock_cabinet_action` | Cabinet actions |
 
-## Ages/Eras
+## Statistics
 
-| Value | Display Name |
-|-------|--------------|
-| `age_1_traditions` | Age of Traditions |
-| `age_2_renaissance` | Age of Renaissance |
-| `age_3_discovery` | Age of Discovery |
-| `age_4_reformation` | Age of Reformation |
-| `age_5_absolutism` | Age of Absolutism |
-| `age_6_revolutions` | Age of Revolutions |
+| Metric | Count |
+|--------|-------|
+| Total advance files | 189 |
+| Total advance definitions | ~2,589 |
+| Universal advances (0_age_* files) | ~510 |
+| Root advances (depth=0) | 24 |
+| Country-specific (potential) | ~1,825 |
+| Government-specific | ~71 |
+| Choice advances (for) | ~150 |
 
 ## Example
 
-```
+```paradox
 written_alphabet = {
     age = age_1_traditions
     icon = abacus_advance
-    depth = 0                      # Root node
+    depth = 0                    # Root node
     research_cost = 2.0
 }
 
 mapmaking = {
     age = age_1_traditions
     icon = mapmaking_advance
-    requires = written_alphabet    # Dependency
-}
-
-colonies = {
-    age = age_1_traditions
-    requires = mapmaking
-    can_colonize = yes             # Feature unlock
+    requires = written_alphabet  # Dependency
 }
 ```
-
-## Dependency Chain Example
-
-```
-written_alphabet (depth=0)
-├── mapmaking
-│   └── colonies (can_colonize = yes)
-├── codified_laws
-│   ├── subjects_advance (unlock_subject_type = vassal)
-│   └── taxation_advance
-│       └── state_administration_advance
-```
-
-## Conditional Advances
-
-Many advances have `potential` blocks restricting them to specific countries/regions:
-
-```
-route_to_the_indies_advance = {
-    age = age_3_discovery
-    potential = {
-        capital = { sub_continent = sub_continent:western_europe }
-    }
-}
-```
-
-## Statistics
-
-| Metric | Count |
-|--------|-------|
-| Total advances | ~2,590 |
-| With potential (country-specific) | ~1,825 |
-| Universal (no potential) | ~765 |
-
-### Per-Era Statistics (Universal Only)
-
-| Era | Advances | Root Trees |
-|-----|----------|------------|
-| Age 1 - Traditions | 98 | 11 |
-| Age 2 - Renaissance | 135 | 12 |
-| Age 3 - Discovery | 136 | 44 |
-| Age 4 - Reformation | 129 | 45 |
-| Age 5 - Absolutism | 137 | 44 |
-| Age 6 - Revolutions | 129 | 43 |
-
-## Inspector Notes
-
-- Tech tree viewer filters out advances with `potential` blocks for cleaner view
-- Tree is a DAG (directed acyclic graph) - multiple parents/children possible
-- No coordinates stored - positions computed by layout algorithm
-- `depth = 0` marks root nodes (starting points)

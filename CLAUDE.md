@@ -18,9 +18,10 @@ EU5-Inspector/
 │       ├── detail-view.js     # Detail panel for selected items
 │       ├── sidebar.js         # Category sidebar navigation
 │       └── search.js          # Debounced search input
-├── tests/test-suite.html      # Browser-based visual test suite
-├── test-parser.js             # Node.js CLI parser tests
-└── test-tree.js               # Node.js CLI tech tree tests
+└── tests/
+    ├── test-suite.html        # Browser-based visual test suite
+    ├── test-parser.js         # Node.js CLI parser tests
+    └── test-tree.js           # Node.js CLI tech tree tests
 ```
 
 ## Architecture
@@ -73,13 +74,48 @@ The tech tree viewer filters out country-specific advances (those with `potentia
 
 ## Testing
 
-**Browser tests:** Open `tests/test-suite.html`, click "Load EU5 Folder"
+### Test-First Development
 
-**Node.js tests:**
+**IMPORTANT:** When debugging, making changes, or extending functionality:
+1. **Run existing tests first** to understand current behavior
+2. **Add/update tests** for the functionality being changed
+3. **Run tests after changes** to verify fixes and catch regressions
+
+### Node.js CLI Tests (Preferred for Development)
+
+Run from project root:
 ```bash
-node test-parser.js "C:\Path\To\EU5"
-node test-tree.js "C:\Path\To\EU5"
+# Parser unit tests (no EU5 folder needed)
+node tests/test-parser.js
+
+# Parser + file tests (with EU5 folder)
+node tests/test-parser.js "C:\Path\To\EU5"
+
+# Tech tree tests (requires EU5 folder)
+node tests/test-tree.js "C:\Path\To\EU5"
 ```
+
+### Browser Tests
+
+Open `tests/test-suite.html` in browser:
+1. Click "Load EU5 Folder" and select your EU5 game directory
+2. Click "Run All Tests" or individual test buttons
+3. Tests include: Parser, Tree Builder, Filtering, Visual Layout
+
+### Test Categories
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `tests/test-parser.js` | Paradox script parsing: key-value, nested blocks, arrays, colors, dates |
+| `tests/test-tree.js` | Tech tree: filtering, requirements extraction, orphan detection, connectivity |
+| `tests/test-suite.html` | All above + visual layout tests in browser |
+
+### When to Add Tests
+
+- **Bug fixes**: Add a test that reproduces the bug before fixing
+- **New filters**: Add filtering tests in `runFilteringTests()`
+- **Parser changes**: Add unit tests in `runParserTests()`
+- **Tree logic changes**: Add tests in `test-tree.js`
 
 ## Conventions
 
