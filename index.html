@@ -13,6 +13,7 @@
             <button id="load-folder">Load EU5 Folder</button>
             <span id="folder-info"></span>
             <button id="load-mods-btn" style="display:none;">Load Mods</button>
+            <button id="new-mod-btn" style="display:none;">New Mod</button>
             <div class="mod-selector" id="mod-selector" style="display:none;">
                 <select id="mod-select">
                     <option value="">No Mod (Base Game)</option>
@@ -52,11 +53,61 @@
         <div class="items-grid" id="items-grid"></div>
     </main>
 
+    <!-- New Mod Modal -->
+    <div class="modal-overlay" id="new-mod-modal" style="display:none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Create New Mod</h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="mod-name">Mod Name *</label>
+                    <input type="text" id="mod-name" placeholder="My Awesome Mod" required>
+                </div>
+                <div class="form-group">
+                    <label for="mod-id">Mod ID *</label>
+                    <input type="text" id="mod-id" placeholder="my_awesome_mod">
+                    <span class="form-hint">Lowercase, underscores only. Auto-generated from name.</span>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mod-version">Version</label>
+                        <input type="text" id="mod-version" value="1.0.0" placeholder="1.0.0">
+                    </div>
+                    <div class="form-group">
+                        <label for="mod-game-version">Game Version</label>
+                        <input type="text" id="mod-game-version" value="1.0.*" placeholder="1.0.*">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="mod-description">Description</label>
+                    <textarea id="mod-description" rows="3" placeholder="A brief description of your mod..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Folders to Include</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="folder-common" checked> common/ (gameplay data)</label>
+                        <label><input type="checkbox" id="folder-events"> events/</label>
+                        <label><input type="checkbox" id="folder-localization" checked> localization/</label>
+                        <label><input type="checkbox" id="folder-gfx"> gfx/ (graphics)</label>
+                        <label><input type="checkbox" id="folder-gui"> gui/ (interface)</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="modal-create">Create Mod</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <!-- Core -->
     <script src="js/parser.js"></script>
     <script src="js/loader.js"></script>
     <script src="js/mod-loader.js"></script>
+    <script src="js/mod-creator.js"></script>
 
     <!-- Utilities -->
     <script src="js/utils/colors.js"></script>

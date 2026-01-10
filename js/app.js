@@ -189,8 +189,9 @@ class EU5ModHelper {
                 folderInfo.classList.add('loaded');
                 loadBtn.style.display = 'none';
 
-                // Show Load Mods button and mod selector
+                // Show Load Mods button, New Mod button, and mod selector
                 loadModsBtn.style.display = 'inline-block';
+                document.getElementById('new-mod-btn').style.display = 'inline-block';
                 modSelector.style.display = 'flex';
 
                 // Load reference data in background
@@ -208,10 +209,19 @@ class EU5ModHelper {
             await this.loadMods();
         });
 
+        // New Mod button handler
+        const newModBtn = document.getElementById('new-mod-btn');
+        newModBtn.addEventListener('click', () => {
+            this.showNewModModal();
+        });
+
         // Mod selection change handler
         modSelect.addEventListener('change', () => {
             this.selectMod(modSelect.value);
         });
+
+        // Modal handlers
+        this.setupModalHandlers();
 
         debugBtn.addEventListener('click', () => this.dumpDebugInfo());
 
@@ -398,6 +408,119 @@ class EU5ModHelper {
         // Show success message
         const folderInfo = document.getElementById('folder-info');
         folderInfo.textContent = `${this.loader.getFolderName()} - ${mods.length} mod(s) loaded`;
+    }
+
+    /**
+     * Setup modal event handlers
+     */
+    setupModalHandlers() {
+        const modal = document.getElementById('new-mod-modal');
+        const closeBtn = document.getElementById('modal-close');
+        const cancelBtn = document.getElementById('modal-cancel');
+        const createBtn = document.getElementById('modal-create');
+        const nameInput = document.getElementById('mod-name');
+        const idInput = document.getElementById('mod-id');
+
+        // Close modal handlers
+        closeBtn.addEventListener('click', () => this.hideNewModModal());
+        cancelBtn.addEventListener('click', () => this.hideNewModModal());
+
+        // Click outside to close
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.hideNewModModal();
+        });
+
+        // Auto-generate ID from name
+        nameInput.addEventListener('input', () => {
+            const creator = new ModCreator();
+            idInput.value = creator.generateId(nameInput.value);
+        });
+
+        // Create mod handler
+        createBtn.addEventListener('click', () => this.createNewMod());
+
+        // Escape key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display !== 'none') {
+                this.hideNewModModal();
+            }
+        });
+    }
+
+    /**
+     * Show the new mod modal
+     */
+    showNewModModal() {
+        const modal = document.getElementById('new-mod-modal');
+        modal.style.display = 'flex';
+
+        // Reset form
+        document.getElementById('mod-name').value = '';
+        document.getElementById('mod-id').value = '';
+        document.getElementById('mod-version').value = '1.0.0';
+        document.getElementById('mod-game-version').value = '1.0.*';
+        document.getElementById('mod-description').value = '';
+
+        // Focus name input
+        setTimeout(() => document.getElementById('mod-name').focus(), 100);
+    }
+
+    /**
+     * Hide the new mod modal
+     */
+    hideNewModModal() {
+        document.getElementById('new-mod-modal').style.display = 'none';
+    }
+
+    /**
+     * Create a new mod from modal form
+     */
+    async createNewMod() {
+        const name = document.getElementById('mod-name').value.trim();
+        const id = document.getElementById('mod-id').value.trim();
+        const version = document.getElementById('mod-version').value.trim() || '1.0.0';
+        const gameVersion = document.getElementById('mod-game-version').value.trim() || '1.0.*';
+        const description = document.getElementById('mod-description').value.trim();
+
+        // Validate
+        if (!name) {
+            alert('Please enter a mod name.');
+            return;
+        }
+        if (!id) {
+            alert('Please enter a mod ID.');
+            return;
+        }
+
+        // Collect selected folders
+        const folders = [];
+        if (document.getElementById('folder-common').checked) folders.push('common');
+        if (document.getElementById('folder-events').checked) folders.push('events');
+        if (document.getElementById('folder-localization').checked) folders.push('localization');
+        if (document.getElementById('folder-gfx').checked) folders.push('gfx');
+        if (document.getElementById('folder-gui').checked) folders.push('gui');
+
+        const config = { name, id, version, gameVersion, description, folders };
+
+        try {
+            const creator = new ModCreator();
+            const result = await creator.createMod(config);
+
+            if (result.cancelled) {
+                return; // User cancelled
+            }
+
+            this.hideNewModModal();
+
+            if (result.method === 'filesystem') {
+                alert(`Mod "${name}" created successfully!\n\nLocation: ${result.path}\n\nYou can now load it using the "Load Mods" button.`);
+            } else {
+                alert(`Mod files downloaded!\n\n${result.message}\n\nCreate the folder structure in your EU5 mods directory.`);
+            }
+        } catch (err) {
+            console.error('Failed to create mod:', err);
+            alert('Failed to create mod: ' + err.message);
+        }
     }
 
     /**
