@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EU5 Inspector</title>
+    <title>EU5 ModHelper</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <header class="header">
-        <h1>EU5 <span>Inspector</span></h1>
+        <h1>EU5 <span>ModHelper</span></h1>
         <div class="header-controls">
             <button id="load-folder">Load EU5 Folder</button>
             <span id="folder-info"></span>
+            <div class="mod-selector" id="mod-selector" style="display:none;">
+                <select id="mod-select">
+                    <option value="">No Mod (Base Game)</option>
+                </select>
+            </div>
             <button id="debug-btn" style="background:#e5c07b;color:#000;margin-left:10px;display:none;">Debug</button>
         </div>
     </header>
@@ -50,6 +55,7 @@
     <!-- Core -->
     <script src="js/parser.js"></script>
     <script src="js/loader.js"></script>
+    <script src="js/mod-loader.js"></script>
 
     <!-- Utilities -->
     <script src="js/utils/colors.js"></script>
@@ -83,6 +89,7 @@
     <script src="js/handlers/topography-handler.js"></script>
     <script src="js/handlers/locations-handler.js"></script>
     <script src="js/handlers/map-definitions-handler.js"></script>
+    <script src="js/handlers/mod-changes-handler.js"></script>
     <!-- Components -->
     <script src="js/components/tree-view.js"></script>
     <script src="js/components/search.js"></script>

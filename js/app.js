@@ -1,11 +1,12 @@
 /**
- * EU5 Inspector - Main Application
- * Core orchestration for loading, navigation, and handler coordination
+ * EU5 ModHelper - Main Application
+ * Core orchestration for loading, navigation, mod support, and handler coordination
  */
 
-class EU5Inspector {
+class EU5ModHelper {
     constructor() {
         this.loader = new FileLoader();
+        this.modLoader = new ModLoader();
         this.referenceManager = new ReferenceManager(this.loader);
         this.filters = null;
         this.search = null;
@@ -14,7 +15,8 @@ class EU5Inspector {
 
         this.currentCategory = null;
         this.currentHandler = null;
-        this.items = {};
+        this.items = {};        // Base game items
+        this.modItems = {};     // Merged items (base + mod)
         this.filteredItems = {};
         this.searchQuery = '';
 
@@ -107,8 +109,8 @@ class EU5Inspector {
             case 'map-definitions':
                 handler = new MapDefinitionsHandler(this);
                 break;
-            case 'world-map':
-                handler = new WorldMapHandler(this);
+            case 'mod-changes':
+                handler = new ModChangesHandler(this);
                 break;
             default:
                 handler = new DefaultHandler(this, categoryId);
@@ -175,6 +177,8 @@ class EU5Inspector {
         // Load folder button
         const loadBtn = document.getElementById('load-folder');
         const debugBtn = document.getElementById('debug-btn');
+        const modSelector = document.getElementById('mod-selector');
+        const modSelect = document.getElementById('mod-select');
 
         loadBtn.addEventListener('click', async () => {
             await this.selectFolder();
@@ -182,8 +186,10 @@ class EU5Inspector {
             if (this.isLoaded) {
                 folderInfo.textContent = this.loader.getFolderName();
                 folderInfo.classList.add('loaded');
-                loadBtn.style.display = 'none';
-                debugBtn.style.display = 'inline-block';
+                loadBtn.textContent = 'Load Mods';
+
+                // Show mod selector
+                modSelector.style.display = 'flex';
 
                 // Load reference data in background
                 this.referenceManager.loadAll();
@@ -192,7 +198,17 @@ class EU5Inspector {
                 if (categories.length > 0) {
                     this.selectCategory(categories[0].id);
                 }
+
+                // Change button to load mods
+                loadBtn.onclick = async () => {
+                    await this.loadMods();
+                };
             }
+        });
+
+        // Mod selection change handler
+        modSelect.addEventListener('change', () => {
+            this.selectMod(modSelect.value);
         });
 
         debugBtn.addEventListener('click', () => this.dumpDebugInfo());
@@ -356,22 +372,111 @@ class EU5Inspector {
         this.isLoaded = true;
     }
 
+    /**
+     * Load mods from a selected folder
+     */
+    async loadMods() {
+        const mods = await this.modLoader.selectModFolder();
+        if (mods.length === 0) {
+            alert('No mods found in the selected folder.\n\nMods should have a .metadata/metadata.json file or descriptor.mod file.');
+            return;
+        }
+
+        // Populate mod selector
+        const modSelect = document.getElementById('mod-select');
+        modSelect.innerHTML = '<option value="">No Mod (Base Game)</option>';
+
+        for (const mod of mods) {
+            const option = document.createElement('option');
+            option.value = mod.id;
+            option.textContent = `${mod.name} (v${mod.version})`;
+            modSelect.appendChild(option);
+        }
+
+        // Show success message
+        const folderInfo = document.getElementById('folder-info');
+        folderInfo.textContent = `${this.loader.getFolderName()} - ${mods.length} mod(s) loaded`;
+    }
+
+    /**
+     * Select and activate a mod
+     */
+    async selectMod(modId) {
+        this.modLoader.selectMod(modId);
+
+        // Clear merged items cache to force reload with mod
+        this.modItems = {};
+
+        // Update categories to show/hide mod changes
+        this.updateCategoriesForMod(modId);
+
+        // Reload current category with mod data
+        if (this.currentCategory) {
+            await this.loadCategory(this.currentCategory);
+        }
+    }
+
+    /**
+     * Update category visibility based on mod selection
+     */
+    updateCategoriesForMod(modId) {
+        const modChangesBtn = document.querySelector('.category-btn[data-category="mod_changes"]');
+        if (modChangesBtn) {
+            modChangesBtn.style.display = modId ? '' : 'none';
+        }
+    }
+
+    /**
+     * Get items for current category (base or merged with mod)
+     */
+    getItemsForCategory(categoryId) {
+        if (this.modLoader.getCurrentMod()) {
+            return this.modItems[categoryId] || this.items[categoryId] || {};
+        }
+        return this.items[categoryId] || {};
+    }
+
     async loadCategory(categoryId) {
         const category = CategoryRegistry.get(categoryId);
         if (!category) return;
 
+        // Special handling for mod_changes category
+        if (categoryId === 'mod_changes') {
+            this.items[categoryId] = this.buildModChangesData();
+            this.applyFilters();
+            this.renderItems();
+            this.setupFilters(categoryId);
+            return;
+        }
+
         document.getElementById('items-grid').innerHTML = '<div class="loading-state">Loading...</div>';
 
         try {
-            let data;
-            if (category.specialFile) {
-                // Load a specific file from the path
-                data = await this.loader.readFile(category.path + '/' + category.specialFile);
-            } else {
-                // Load all files from the directory
-                data = await this.loader.readDirectory(category.path);
+            // Load base game data if not already loaded
+            if (!this.items[categoryId]) {
+                let data;
+                if (category.specialFile) {
+                    data = await this.loader.readFile(category.path + '/' + category.specialFile);
+                } else {
+                    data = await this.loader.readDirectory(category.path);
+                }
+                this.items[categoryId] = data || {};
             }
-            this.items[categoryId] = data || {};
+
+            // If a mod is active, load and merge mod data
+            if (this.modLoader.getCurrentMod()) {
+                const modData = await this.loadModDataForCategory(categoryId, category);
+                if (modData && Object.keys(modData).length > 0) {
+                    this.modItems[categoryId] = this.modLoader.mergeData(
+                        this.items[categoryId],
+                        modData,
+                        categoryId
+                    );
+                } else {
+                    this.modItems[categoryId] = this.items[categoryId];
+                }
+            }
+
             this.applyFilters();
             this.renderItems();
             this.setupFilters(categoryId);
@@ -382,9 +487,63 @@ class EU5Inspector {
         }
     }
 
+    /**
+     * Load mod data for a specific category
+     */
+    async loadModDataForCategory(categoryId, category) {
+        const modFiles = this.modLoader.getModFilesInDirectory(category.path);
+        if (modFiles.length === 0) return null;
+
+        const combined = {};
+        const parser = new ParadoxParser();
+
+        for (const { file } of modFiles) {
+            try {
+                const text = await file.text();
+                const parsed = parser.parse(text);
+                const filename = file.name.replace('.txt', '');
+
+                for (const [key, value] of Object.entries(parsed)) {
+                    if (key.startsWith('_')) continue;
+                    if (typeof value === 'object' && value !== null) {
+                        value._sourceFile = filename;
+                        value._fromMod = true;
+                    }
+                    combined[key] = value;
+                }
+            } catch (err) {
+                console.error(`Error reading mod file ${file.name}:`, err);
+            }
+        }
+
+        return combined;
+    }
+
+    /**
+     * Build data for mod changes category
+     */
+    buildModChangesData() {
+        const changes = this.modLoader.getModChanges();
+        const data = {};
+
+        for (const change of changes) {
+            const key = `${change.category}:${change.key}`;
+            data[key] = {
+                _changeType: change.type,
+                _category: change.category,
+                _itemKey: change.key,
+                _modName: change.modName,
+                original: change.original,
+                modded: change.modded
+            };
+        }
+
+        return data;
+    }
+
     setupFilters(categoryId) {
         const handler = this.getHandler(categoryId);
-        const data = this.items[categoryId];
+        const data = this.getItemsForCategory(categoryId);
 
         if (handler && data) {
             const filterGroups = handler.buildFilterGroups(data);
@@ -396,12 +555,13 @@ class EU5Inspector {
 
     applyFilters() {
         const categoryId = this.currentCategory;
-        if (!categoryId || !this.items[categoryId]) return;
+        const items = this.getItemsForCategory(categoryId);
+        if (!categoryId || !items || Object.keys(items).length === 0) return;
 
         const handler = this.getHandler(categoryId);
         if (handler) {
             this.filteredItems[categoryId] = handler.applyFilters(
-                this.items[categoryId],
+                items,
                 this.searchQuery,
                 this.filters
             );
@@ -457,15 +617,18 @@ class EU5Inspector {
     updateItemCount() {
         const countEl = document.getElementById('items-count');
         const totalFiltered = this.allKeys.length;
-        const allItems = this.items[this.currentCategory] || {};
+        const allItems = this.getItemsForCategory(this.currentCategory);
         const totalItems = Object.keys(allItems).filter(k => !k.startsWith('_')).length;
 
+        // Show mod indicator if mod is active
+        const modSuffix = this.modLoader.getCurrentMod() ? ' (modded)' : '';
+
         if (this.displayedCount < totalFiltered) {
-            countEl.textContent = `${this.displayedCount} of ${totalFiltered}${totalFiltered < totalItems ? ` (${totalItems} total)` : ''}`;
+            countEl.textContent = `${this.displayedCount} of ${totalFiltered}${totalFiltered < totalItems ? ` (${totalItems} total)` : ''}${modSuffix}`;
         } else {
             countEl.textContent = totalFiltered === totalItems
-                ? `${totalFiltered} items`
-                : `${totalFiltered} of ${totalItems}`;
+                ? `${totalFiltered} items${modSuffix}`
+                : `${totalFiltered} of ${totalItems}${modSuffix}`;
         }
     }
 
@@ -486,15 +649,15 @@ class EU5Inspector {
                             <path d="M2 17l10 5 10-5M2 12l10 5 10-5" fill="none" stroke="currentColor" stroke-width="1.5"/>
                         </svg>
                     </div>
-                    <h2>Select EU5 Folder</h2>
-                    <p>Click "Select EU5 Folder" above to get started, then choose a category.</p>
+                    <h2>EU5 ModHelper</h2>
+                    <p>Click "Load EU5 Folder" above to get started, then optionally load mods.</p>
                 </div>
             `;
             countEl.textContent = '';
             return;
         }
 
-        const allItems = this.items[this.currentCategory] || {};
+        const allItems = this.getItemsForCategory(this.currentCategory);
         const items = this.filteredItems[this.currentCategory] || {};
         this.allKeys = Object.keys(items).filter(k => !k.startsWith('_'));
 
@@ -615,6 +778,6 @@ class EU5Inspector {
 window.eu5App = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    window.eu5App = new EU5Inspector();
+    window.eu5App = new EU5ModHelper();
     window.eu5App.init();
 });

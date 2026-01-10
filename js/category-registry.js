@@ -305,6 +305,21 @@ const CategoryRegistry = {
             { key: 'level', name: 'Level' },
             { key: 'rule', name: 'Rule Type' }
         ]
+    },
+
+    // =====================
+    // Mod Support
+    // =====================
+    mod_changes: {
+        id: 'mod_changes',
+        name: 'Mod Changes',
+        icon: '\uD83D\uDEE0',
+        path: null,
+        handler: 'mod-changes',
+        filters: [
+            { key: '_changeType', name: 'Change Type' },
+            { key: '_category', name: 'Category' }
+        ]
     }
 };
 
@@ -333,7 +348,8 @@ CategoryRegistry.getGrouped = function() {
         'Military & Diplomacy': ['unit_types', 'casus_belli', 'subject_types', 'international_organizations'],
         'Geography & Map': ['climates', 'vegetation', 'topography', 'locations', 'map_definitions'],
         'Modifiers & Scripting': ['modifier_types', 'static_modifiers'],
-        'Characters & Misc': ['traits', 'events', 'disasters', 'formable_countries']
+        'Characters & Misc': ['traits', 'events', 'disasters', 'formable_countries'],
+        'Mod Tools': ['mod_changes']
     };
 };
 

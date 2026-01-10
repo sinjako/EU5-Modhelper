@@ -1,4 +1,4 @@
-/* EU5 Inspector - Styles */
+/* EU5 ModHelper - Styles */
 
 :root {
     --bg-primary: #1a1a2e;
@@ -108,6 +108,180 @@ body {
 #folder-info.loaded {
     color: var(--val-str);
 }
+
+/* Mod Selector */
+.mod-selector {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#mod-select {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    min-width: 180px;
+}
+
+#mod-select:hover {
+    border-color: var(--accent);
+}
+
+#mod-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* Mod Changes View */
+.mod-changes-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.mod-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mod-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--accent);
+}
+
+.mod-version {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: var(--bg-primary);
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.change-stats {
+    display: flex;
+    gap: 12px;
+}
+
+.change-stats .stat {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 4px;
+    background: var(--bg-primary);
+}
+
+.stat-add { color: var(--val-str); }
+.stat-modify { color: var(--val-num); }
+.stat-replace { color: var(--accent); }
+
+.mod-changes-category {
+    margin-bottom: 24px;
+}
+
+.mod-changes-category .category-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.change-item {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px 16px;
+    border-left: 3px solid var(--border);
+}
+
+.change-item.change-add { border-left-color: var(--val-str); }
+.change-item.change-modify { border-left-color: var(--val-num); }
+.change-item.change-replace { border-left-color: var(--accent); }
+.change-item.change-inject { border-left-color: var(--val-yes); }
+
+.change-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.change-type-badge {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--bg-primary);
+}
+
+.change-type-badge.change-add { color: var(--val-str); }
+.change-type-badge.change-modify { color: var(--val-num); }
+.change-type-badge.change-replace { color: var(--accent); }
+.change-type-badge.change-inject { color: var(--val-yes); }
+
+.change-key {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.change-diff {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.diff-section {
+    background: var(--bg-primary);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.diff-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 6px;
+}
+
+.diff-original .diff-label { color: var(--val-no); }
+.diff-modded .diff-label { color: var(--val-str); }
+
+.diff-content {
+    font-size: 0.8rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+    color: var(--text-secondary);
+    word-break: break-word;
+}
+
+.change-new {
+    background: var(--bg-primary);
+    border-radius: 4px;
+    padding: 10px;
+}
+
+.prop-key { color: var(--val-yes); }
+.prop-val { color: var(--val-str); }
+.val-null { color: var(--text-muted); font-style: italic; }
+.val-empty { color: var(--text-muted); }
+.val-primitive { color: var(--val-num); }
 
 /* Toolbar */
 .toolbar {
