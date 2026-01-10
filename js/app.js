@@ -18,6 +18,12 @@ class EU5Inspector {
         this.filteredItems = {};
         this.searchQuery = '';
 
+        // Pagination state
+        this.pageSize = 200;
+        this.displayedCount = 0;
+        this.allKeys = [];
+        this.isLoadingMore = false;
+
         // Handler instances cache
         this.handlers = {};
     }
@@ -86,6 +92,24 @@ class EU5Inspector {
             case 'formable-countries':
                 handler = new FormableCountriesHandler(this);
                 break;
+            case 'climates':
+                handler = new ClimatesHandler(this);
+                break;
+            case 'vegetation':
+                handler = new VegetationHandler(this);
+                break;
+            case 'topography':
+                handler = new TopographyHandler(this);
+                break;
+            case 'locations':
+                handler = new LocationsHandler(this);
+                break;
+            case 'map-definitions':
+                handler = new MapDefinitionsHandler(this);
+                break;
+            case 'world-map':
+                handler = new WorldMapHandler(this);
+                break;
             default:
                 handler = new DefaultHandler(this, categoryId);
         }
@@ -140,6 +164,12 @@ class EU5Inspector {
                     this.currentHandler.onResize();
                 }
             }, 100);
+        });
+
+        // Infinite scroll for pagination
+        const mainContent = document.querySelector('.main-content');
+        mainContent.addEventListener('scroll', () => {
+            this.handleScroll(mainContent);
         });
 
         // Load folder button
@@ -283,6 +313,10 @@ class EU5Inspector {
         this.currentCategory = categoryId;
         this.currentHandler = this.getHandler(categoryId);
 
+        // Reset scroll position and pagination
+        document.querySelector('.main-content').scrollTop = 0;
+        this.displayedCount = 0;
+
         document.querySelectorAll('.category-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.category === categoryId);
         });
@@ -329,7 +363,14 @@ class EU5Inspector {
         document.getElementById('items-grid').innerHTML = '<div class="loading-state">Loading...</div>';
 
         try {
-            const data = await this.loader.readDirectory(category.path);
+            let data;
+            if (category.specialFile) {
+                // Load a specific file from the path
+                data = await this.loader.readFile(category.path + '/' + category.specialFile);
+            } else {
+                // Load all files from the directory
+                data = await this.loader.readDirectory(category.path);
+            }
             this.items[categoryId] = data || {};
             this.applyFilters();
             this.renderItems();
@@ -365,11 +406,76 @@ class EU5Inspector {
                 this.filters
             );
         }
+        // Reset pagination when filters change
+        this.displayedCount = 0;
+    }
+
+    /**
+     * Handle scroll for infinite loading
+     */
+    handleScroll(container) {
+        if (this.isLoadingMore) return;
+        if (this.displayedCount >= this.allKeys.length) return;
+
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        // Load more when 200px from bottom
+        if (scrollTop + clientHeight >= scrollHeight - 200) {
+            this.loadMoreItems();
+        }
+    }
+
+    /**
+     * Load more items for pagination
+     */
+    loadMoreItems() {
+        if (this.isLoadingMore) return;
+        if (this.displayedCount >= this.allKeys.length) return;
+
+        this.isLoadingMore = true;
+        const grid = document.getElementById('items-grid');
+        const items = this.filteredItems[this.currentCategory] || {};
+
+        const nextBatch = this.allKeys.slice(this.displayedCount, this.displayedCount + this.pageSize);
+        this.displayedCount += nextBatch.length;
+
+        // Append new items
+        const handler = this.getHandler(this.currentCategory);
+        if (handler) {
+            handler.appendItems(grid, items, nextBatch);
+        }
+
+        this.updateItemCount();
+        this.isLoadingMore = false;
+    }
+
+    /**
+     * Update the displayed item count
+     */
+    updateItemCount() {
+        const countEl = document.getElementById('items-count');
+        const totalFiltered = this.allKeys.length;
+        const allItems = this.items[this.currentCategory] || {};
+        const totalItems = Object.keys(allItems).filter(k => !k.startsWith('_')).length;
+
+        if (this.displayedCount < totalFiltered) {
+            countEl.textContent = `${this.displayedCount} of ${totalFiltered}${totalFiltered < totalItems ? ` (${totalItems} total)` : ''}`;
+        } else {
+            countEl.textContent = totalFiltered === totalItems
+                ? `${totalFiltered} items`
+                : `${totalFiltered} of ${totalItems}`;
+        }
     }
 
     renderItems() {
         const grid = document.getElementById('items-grid');
         const countEl = document.getElementById('items-count');
+        const mainContent = document.querySelector('.main-content');
+
+        // Reset scroll position on fresh render
+        mainContent.scrollTop = 0;
 
         if (!this.currentCategory) {
             grid.innerHTML = `
@@ -390,24 +496,26 @@ class EU5Inspector {
 
         const allItems = this.items[this.currentCategory] || {};
         const items = this.filteredItems[this.currentCategory] || {};
-        const keys = Object.keys(items).filter(k => !k.startsWith('_'));
-        const totalKeys = Object.keys(allItems).filter(k => !k.startsWith('_')).length;
+        this.allKeys = Object.keys(items).filter(k => !k.startsWith('_'));
 
-        countEl.textContent = keys.length === totalKeys
-            ? `${keys.length} items`
-            : `${keys.length} of ${totalKeys}`;
-
-        if (keys.length === 0) {
+        if (this.allKeys.length === 0) {
             grid.innerHTML = '<div class="empty-state"><h2>No matching items</h2><p>Try adjusting your filters or search query.</p></div>';
+            countEl.textContent = '';
             return;
         }
+
+        // Paginate: only render first batch
+        const initialKeys = this.allKeys.slice(0, this.pageSize);
+        this.displayedCount = initialKeys.length;
 
         // Delegate rendering to the handler
         const handler = this.getHandler(this.currentCategory);
         if (handler) {
-            handler.render(grid, items, keys);
+            handler.render(grid, items, initialKeys);
             handler.afterRender(grid);
         }
+
+        this.updateItemCount();
     }
 
     /**

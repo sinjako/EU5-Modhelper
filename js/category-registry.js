@@ -169,6 +169,62 @@ const CategoryRegistry = {
     },
 
     // =====================
+    // Geography & Map
+    // =====================
+    climates: {
+        id: 'climates',
+        name: 'Climates',
+        icon: '\u2600',
+        path: 'game/in_game/common/climates',
+        handler: 'climates',
+        filters: [
+            { key: 'winter', name: 'Winter Type' }
+        ]
+    },
+    vegetation: {
+        id: 'vegetation',
+        name: 'Vegetation',
+        icon: '\uD83C\uDF33',
+        path: 'game/in_game/common/vegetation',
+        handler: 'vegetation',
+        filters: []
+    },
+    topography: {
+        id: 'topography',
+        name: 'Terrain',
+        icon: '\u26F0',
+        path: 'game/in_game/common/topography',
+        handler: 'topography',
+        filters: [
+            { key: 'type', name: 'Type' }
+        ]
+    },
+    locations: {
+        id: 'locations',
+        name: 'Locations',
+        icon: '\uD83D\uDCCD',
+        path: 'game/in_game/map_data',
+        handler: 'locations',
+        specialFile: 'location_templates.txt',
+        filters: [
+            { key: 'topography', name: 'Terrain' },
+            { key: 'vegetation', name: 'Vegetation' },
+            { key: 'climate', name: 'Climate' },
+            { key: 'raw_material', name: 'Resource' }
+        ]
+    },
+    map_definitions: {
+        id: 'map_definitions',
+        name: 'Regions',
+        icon: '\uD83D\uDDFA',
+        path: 'game/in_game/map_data',
+        handler: 'map-definitions',
+        specialFile: 'definitions.txt',
+        filters: [
+            { key: 'type', name: 'Level' }
+        ]
+    },
+    // =====================
     // Modifiers & Scripting
     // =====================
     modifier_types: {
@@ -275,6 +331,7 @@ CategoryRegistry.getGrouped = function() {
         'Government & Politics': ['government_types', 'laws', 'estates', 'heirs_selections'],
         'Economy & Buildings': ['buildings', 'goods', 'pop_types', 'institutions'],
         'Military & Diplomacy': ['unit_types', 'casus_belli', 'subject_types', 'international_organizations'],
+        'Geography & Map': ['climates', 'vegetation', 'topography', 'locations', 'map_definitions'],
         'Modifiers & Scripting': ['modifier_types', 'static_modifiers'],
         'Characters & Misc': ['traits', 'events', 'disasters', 'formable_countries']
     };

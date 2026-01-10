@@ -217,6 +217,19 @@ class BaseHandler {
     }
 
     /**
+     * Append more items to the container (for pagination)
+     * @param {HTMLElement} container - Container element
+     * @param {object} items - Items to render
+     * @param {Array} keys - Keys of items to append
+     */
+    appendItems(container, items, keys) {
+        const html = keys.map(key =>
+            ItemCard.render(key, items[key], this.getCategoryId())
+        ).join('');
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    /**
      * Called after rendering is complete
      * Override in subclasses for post-render setup (e.g., SVG connections)
      * @param {HTMLElement} container - Container element
