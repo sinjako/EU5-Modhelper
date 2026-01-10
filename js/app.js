@@ -176,6 +176,7 @@ class EU5ModHelper {
 
         // Load folder button
         const loadBtn = document.getElementById('load-folder');
+        const loadModsBtn = document.getElementById('load-mods-btn');
         const debugBtn = document.getElementById('debug-btn');
         const modSelector = document.getElementById('mod-selector');
         const modSelect = document.getElementById('mod-select');
@@ -186,9 +187,10 @@ class EU5ModHelper {
             if (this.isLoaded) {
                 folderInfo.textContent = this.loader.getFolderName();
                 folderInfo.classList.add('loaded');
-                loadBtn.textContent = 'Load Mods';
+                loadBtn.style.display = 'none';
 
-                // Show mod selector
+                // Show Load Mods button and mod selector
+                loadModsBtn.style.display = 'inline-block';
                 modSelector.style.display = 'flex';
 
                 // Load reference data in background
@@ -198,12 +200,12 @@ class EU5ModHelper {
                 if (categories.length > 0) {
                     this.selectCategory(categories[0].id);
                 }
-
-                // Change button to load mods
-                loadBtn.onclick = async () => {
-                    await this.loadMods();
-                };
             }
+        });
+
+        // Load Mods button handler
+        loadModsBtn.addEventListener('click', async () => {
+            await this.loadMods();
         });
 
         // Mod selection change handler

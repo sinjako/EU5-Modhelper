@@ -100,6 +100,23 @@ body {
     background: var(--accent-light);
 }
 
+#load-mods-btn {
+    background: var(--bg-tertiary);
+    color: white;
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+#load-mods-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+}
+
 #folder-info {
     color: var(--text-muted);
     font-size: 0.8rem;
