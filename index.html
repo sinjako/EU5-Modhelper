@@ -14,6 +14,7 @@
             <span id="folder-info"></span>
             <button id="load-mods-btn" style="display:none;">Load Mods</button>
             <button id="new-mod-btn" style="display:none;">New Mod</button>
+            <button id="save-mod-btn" style="display:none;">Save Mod</button>
             <div class="mod-selector" id="mod-selector" style="display:none;">
                 <select id="mod-select">
                     <option value="">No Mod (Base Game)</option>
@@ -102,12 +103,38 @@
         </div>
     </div>
 
+    <!-- Edit Item Modal -->
+    <div class="modal-overlay" id="edit-item-modal" style="display:none;">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <h2>Edit: <span id="edit-item-name"></span></h2>
+                <button class="modal-close" id="edit-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="editor-container">
+                    <div class="editor-toolbar">
+                        <button class="btn btn-small" id="editor-add-prop">+ Add Property</button>
+                        <span class="editor-category" id="editor-category"></span>
+                    </div>
+                    <div class="editor-content" id="editor-content">
+                        <!-- Properties will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="edit-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="edit-modal-save">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <!-- Core -->
     <script src="js/parser.js"></script>
     <script src="js/loader.js"></script>
     <script src="js/mod-loader.js"></script>
     <script src="js/mod-creator.js"></script>
+    <script src="js/mod-writer.js"></script>
 
     <!-- Utilities -->
     <script src="js/utils/colors.js"></script>

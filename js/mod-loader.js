@@ -7,10 +7,12 @@ class ModLoader {
     constructor() {
         this.mods = new Map(); // modId -> mod info
         this.modFiles = new Map(); // modId -> Map of path -> File
+        this.modHandles = new Map(); // modId -> DirectoryHandle (for writing)
         this.currentMod = null;
         this.parser = new ParadoxParser();
         this.modChanges = new Map(); // path -> {type: 'add'|'modify'|'replace', original, modded}
         this.fileInput = null;
+        this.supportsFileSystemAccess = 'showDirectoryPicker' in window;
         this._createFileInput();
     }
 
@@ -196,10 +198,70 @@ class ModLoader {
 
     /**
      * Get currently selected mod
-     * @returns {Object|null} Current mod info or null
+     * @returns {Object|null} Current mod info or null (includes directoryHandle if available)
      */
     getCurrentMod() {
-        return this.currentMod ? this.mods.get(this.currentMod) : null;
+        if (!this.currentMod) return null;
+        const mod = this.mods.get(this.currentMod);
+        if (!mod) return null;
+
+        // Include directory handle if available
+        return {
+            ...mod,
+            directoryHandle: this.modHandles.get(this.currentMod) || null
+        };
+    }
+
+    /**
+     * Get or request write access to current mod folder
+     * Uses File System Access API
+     * @returns {Promise<FileSystemDirectoryHandle|null>}
+     */
+    async getModDirectoryHandle() {
+        if (!this.currentMod) return null;
+
+        // Check if we already have a handle
+        let handle = this.modHandles.get(this.currentMod);
+        if (handle) {
+            // Verify we still have permission
+            const permission = await handle.queryPermission({ mode: 'readwrite' });
+            if (permission === 'granted') return handle;
+
+            // Try to request permission
+            const request = await handle.requestPermission({ mode: 'readwrite' });
+            if (request === 'granted') return handle;
+        }
+
+        // Need to get a new handle via showDirectoryPicker
+        if (!this.supportsFileSystemAccess) {
+            console.warn('File System Access API not supported');
+            return null;
+        }
+
+        try {
+            handle = await window.showDirectoryPicker({
+                mode: 'readwrite',
+                startIn: 'documents'
+            });
+
+            // Store the handle
+            this.modHandles.set(this.currentMod, handle);
+            return handle;
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                console.error('Failed to get directory handle:', err);
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Set directory handle for a mod (used when creating new mods)
+     * @param {string} modId - Mod ID
+     * @param {FileSystemDirectoryHandle} handle - Directory handle
+     */
+    setModDirectoryHandle(modId, handle) {
+        this.modHandles.set(modId, handle);
     }
 
     /**
@@ -438,6 +500,7 @@ class ModLoader {
     clear() {
         this.mods.clear();
         this.modFiles.clear();
+        this.modHandles.clear();
         this.currentMod = null;
         this.modChanges.clear();
     }

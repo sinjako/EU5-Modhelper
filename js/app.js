@@ -152,8 +152,20 @@ class EU5ModHelper {
             }
         });
 
-        // Add click handler for reference links
+        // Add click handler for reference links and edit buttons
         document.getElementById('items-grid').addEventListener('click', (e) => {
+            // Handle edit button clicks
+            const editBtn = e.target.closest('.card-edit-btn');
+            if (editBtn) {
+                e.preventDefault();
+                const name = editBtn.dataset.name;
+                const category = editBtn.dataset.category;
+                if (name && category) {
+                    this.showEditModal(name, category);
+                }
+                return;
+            }
+
             this.handleReferenceClick(e);
         });
 
@@ -213,6 +225,12 @@ class EU5ModHelper {
         const newModBtn = document.getElementById('new-mod-btn');
         newModBtn.addEventListener('click', () => {
             this.showNewModModal();
+        });
+
+        // Save Mod button handler
+        const saveModBtn = document.getElementById('save-mod-btn');
+        saveModBtn.addEventListener('click', () => {
+            this.saveMod();
         });
 
         // Mod selection change handler
@@ -441,10 +459,40 @@ class EU5ModHelper {
 
         // Escape key to close
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal.style.display !== 'none') {
-                this.hideNewModModal();
+            if (e.key === 'Escape') {
+                if (modal.style.display !== 'none') {
+                    this.hideNewModModal();
+                }
+                const editModal = document.getElementById('edit-item-modal');
+                if (editModal && editModal.style.display !== 'none') {
+                    this.hideEditModal();
+                }
             }
         });
+
+        // Edit modal handlers
+        this.setupEditModalHandlers();
+    }
+
+    /**
+     * Setup edit modal event handlers
+     */
+    setupEditModalHandlers() {
+        const editModal = document.getElementById('edit-item-modal');
+        const editCloseBtn = document.getElementById('edit-modal-close');
+        const editCancelBtn = document.getElementById('edit-modal-cancel');
+        const editSaveBtn = document.getElementById('edit-modal-save');
+        const addPropBtn = document.getElementById('editor-add-prop');
+
+        editCloseBtn.addEventListener('click', () => this.hideEditModal());
+        editCancelBtn.addEventListener('click', () => this.hideEditModal());
+
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) this.hideEditModal();
+        });
+
+        editSaveBtn.addEventListener('click', () => this.saveItemEdits());
+        addPropBtn.addEventListener('click', () => this.addNewProperty());
     }
 
     /**
@@ -522,6 +570,411 @@ class EU5ModHelper {
             alert('Failed to create mod: ' + err.message);
         }
     }
+
+    // ============================================================
+    // ITEM EDITING
+    // ============================================================
+
+    /**
+     * Current item being edited
+     */
+    editingItem = null;
+    editingCategory = null;
+    editedValues = {};
+    pendingEdits = {}; // { category: { itemName: { prop: value } } }
+
+    /**
+     * Show the edit modal for an item
+     */
+    showEditModal(itemName, category) {
+        const items = this.getItemsForCategory(category);
+        const itemData = items[itemName];
+
+        if (!itemData) {
+            alert('Item not found');
+            return;
+        }
+
+        this.editingItem = itemName;
+        this.editingCategory = category;
+        this.editedValues = JSON.parse(JSON.stringify(itemData)); // Deep clone
+
+        const modal = document.getElementById('edit-item-modal');
+        const nameEl = document.getElementById('edit-item-name');
+        const categoryEl = document.getElementById('editor-category');
+
+        nameEl.textContent = itemName.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        categoryEl.textContent = category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        this.renderEditor(itemData);
+        modal.style.display = 'flex';
+    }
+
+    /**
+     * Hide the edit modal
+     */
+    hideEditModal() {
+        document.getElementById('edit-item-modal').style.display = 'none';
+        this.editingItem = null;
+        this.editingCategory = null;
+        this.editedValues = {};
+    }
+
+    /**
+     * Render the editor content
+     */
+    renderEditor(data) {
+        const container = document.getElementById('editor-content');
+        container.innerHTML = '';
+
+        for (const [key, value] of Object.entries(data)) {
+            if (key.startsWith('_')) continue; // Skip internal properties
+            container.appendChild(this.renderEditorProperty(key, value, ''));
+        }
+    }
+
+    /**
+     * Render a single editor property
+     */
+    renderEditorProperty(key, value, path) {
+        const fullPath = path ? `${path}.${key}` : key;
+        const div = document.createElement('div');
+        div.className = 'editor-property';
+        div.dataset.path = fullPath;
+
+        // Key label
+        const keyEl = document.createElement('span');
+        keyEl.className = 'editor-prop-key';
+        keyEl.textContent = key;
+        div.appendChild(keyEl);
+
+        // Value input
+        const valueContainer = document.createElement('div');
+        valueContainer.className = 'editor-prop-value';
+
+        if (value === null || value === undefined) {
+            valueContainer.innerHTML = this.createTextInput(fullPath, '');
+        } else if (typeof value === 'boolean') {
+            valueContainer.innerHTML = this.createBoolInput(fullPath, value);
+        } else if (typeof value === 'number') {
+            valueContainer.innerHTML = this.createNumberInput(fullPath, value);
+        } else if (typeof value === 'string') {
+            valueContainer.innerHTML = this.createTextInput(fullPath, value);
+        } else if (value._type === 'rgb') {
+            valueContainer.innerHTML = this.createColorInput(fullPath, value, 'rgb');
+        } else if (value._type === 'hsv') {
+            valueContainer.innerHTML = this.createColorInput(fullPath, value, 'hsv');
+        } else if (Array.isArray(value)) {
+            valueContainer.innerHTML = this.createArrayInput(fullPath, value);
+        } else if (typeof value === 'object') {
+            valueContainer.innerHTML = this.createNestedInput(fullPath, value);
+        } else {
+            valueContainer.innerHTML = this.createTextInput(fullPath, String(value));
+        }
+
+        div.appendChild(valueContainer);
+
+        // Delete button
+        const actionsEl = document.createElement('div');
+        actionsEl.className = 'editor-prop-actions';
+        actionsEl.innerHTML = `
+            <button class="editor-prop-delete" data-path="${fullPath}" title="Delete property">
+                <svg viewBox="0 0 24 24" width="14" height="14">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                </svg>
+            </button>
+        `;
+        div.appendChild(actionsEl);
+
+        // Add event listener for delete
+        actionsEl.querySelector('.editor-prop-delete').addEventListener('click', (e) => {
+            e.preventDefault();
+            this.deleteProperty(fullPath);
+        });
+
+        return div;
+    }
+
+    createTextInput(path, value) {
+        return `<input type="text" data-path="${path}" value="${this.escapeHtml(String(value))}" onchange="eu5App.updateValue('${path}', this.value)">`;
+    }
+
+    createNumberInput(path, value) {
+        return `<input type="number" step="any" data-path="${path}" value="${value}" onchange="eu5App.updateValue('${path}', parseFloat(this.value))">`;
+    }
+
+    createBoolInput(path, value) {
+        return `
+            <div class="editor-bool-toggle">
+                <button class="editor-bool-btn ${value ? 'active-yes' : ''}" onclick="eu5App.updateValue('${path}', true)">yes</button>
+                <button class="editor-bool-btn ${!value ? 'active-no' : ''}" onclick="eu5App.updateValue('${path}', false)">no</button>
+            </div>
+        `;
+    }
+
+    createColorInput(path, value, type) {
+        if (type === 'rgb') {
+            const r = Math.round(value.r || 0);
+            const g = Math.round(value.g || 0);
+            const b = Math.round(value.b || 0);
+            const color = `rgb(${r}, ${g}, ${b})`;
+            return `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="editor-color-preview" style="background: ${color}"></span>
+                    <div class="editor-color-inputs">
+                        <input type="number" min="0" max="255" value="${r}" data-path="${path}.r" onchange="eu5App.updateColorValue('${path}', 'r', this.value)">
+                        <input type="number" min="0" max="255" value="${g}" data-path="${path}.g" onchange="eu5App.updateColorValue('${path}', 'g', this.value)">
+                        <input type="number" min="0" max="255" value="${b}" data-path="${path}.b" onchange="eu5App.updateColorValue('${path}', 'b', this.value)">
+                    </div>
+                </div>
+            `;
+        } else {
+            const h = (value.h || 0).toFixed(1);
+            const s = (value.s || 0).toFixed(2);
+            const v = (value.v || 0).toFixed(2);
+            return `
+                <div class="editor-color-inputs">
+                    <input type="number" step="0.1" min="0" max="360" value="${h}" data-path="${path}.h" onchange="eu5App.updateColorValue('${path}', 'h', this.value)">
+                    <input type="number" step="0.01" min="0" max="1" value="${s}" data-path="${path}.s" onchange="eu5App.updateColorValue('${path}', 's', this.value)">
+                    <input type="number" step="0.01" min="0" max="1" value="${v}" data-path="${path}.v" onchange="eu5App.updateColorValue('${path}', 'v', this.value)">
+                </div>
+            `;
+        }
+    }
+
+    createArrayInput(path, value) {
+        const displayVal = value.map(v => typeof v === 'object' ? JSON.stringify(v) : v).join(', ');
+        return `<input type="text" data-path="${path}" value="${this.escapeHtml(displayVal)}" placeholder="comma-separated values" onchange="eu5App.updateArrayValue('${path}', this.value)">`;
+    }
+
+    createNestedInput(path, value) {
+        const keys = Object.keys(value).filter(k => !k.startsWith('_'));
+        return `<span style="color: var(--text-muted); font-size: 0.8rem;">{${keys.length} properties} - nested editing not yet supported</span>`;
+    }
+
+    /**
+     * Update a value in the edited item
+     */
+    updateValue(path, value) {
+        this.setNestedValue(this.editedValues, path, value);
+
+        // Mark input as modified
+        const input = document.querySelector(`[data-path="${path}"]`);
+        if (input) input.classList.add('modified');
+    }
+
+    /**
+     * Update a color value component
+     */
+    updateColorValue(path, component, value) {
+        const current = this.getNestedValue(this.editedValues, path) || {};
+        current[component] = parseFloat(value);
+        this.setNestedValue(this.editedValues, path, current);
+
+        // Update preview
+        this.updateColorPreview(path);
+    }
+
+    updateColorPreview(path) {
+        const color = this.getNestedValue(this.editedValues, path);
+        if (!color) return;
+
+        const preview = document.querySelector(`[data-path="${path}"]`)?.closest('.editor-property')?.querySelector('.editor-color-preview');
+        if (preview && color._type === 'rgb') {
+            preview.style.background = `rgb(${Math.round(color.r)}, ${Math.round(color.g)}, ${Math.round(color.b)})`;
+        }
+    }
+
+    /**
+     * Update an array value
+     */
+    updateArrayValue(path, stringValue) {
+        const values = stringValue.split(',').map(v => {
+            const trimmed = v.trim();
+            // Try to parse as number
+            const num = parseFloat(trimmed);
+            if (!isNaN(num) && String(num) === trimmed) return num;
+            // Try to parse as boolean
+            if (trimmed === 'yes' || trimmed === 'true') return true;
+            if (trimmed === 'no' || trimmed === 'false') return false;
+            return trimmed;
+        });
+        this.setNestedValue(this.editedValues, path, values);
+    }
+
+    /**
+     * Delete a property
+     */
+    deleteProperty(path) {
+        if (!confirm(`Delete property "${path}"?`)) return;
+
+        const parts = path.split('.');
+        const key = parts.pop();
+        const parent = parts.length > 0 ? this.getNestedValue(this.editedValues, parts.join('.')) : this.editedValues;
+
+        if (parent && key in parent) {
+            delete parent[key];
+            this.renderEditor(this.editedValues);
+        }
+    }
+
+    /**
+     * Add a new property
+     */
+    addNewProperty() {
+        const propName = prompt('Enter property name:');
+        if (!propName) return;
+
+        const propType = prompt('Enter type (text, number, bool, array):', 'text');
+
+        let defaultValue;
+        switch (propType) {
+            case 'number': defaultValue = 0; break;
+            case 'bool': defaultValue = true; break;
+            case 'array': defaultValue = []; break;
+            default: defaultValue = '';
+        }
+
+        this.editedValues[propName] = defaultValue;
+        this.renderEditor(this.editedValues);
+    }
+
+    /**
+     * Get nested value from path
+     */
+    getNestedValue(obj, path) {
+        return path.split('.').reduce((o, k) => o?.[k], obj);
+    }
+
+    /**
+     * Set nested value from path
+     */
+    setNestedValue(obj, path, value) {
+        const parts = path.split('.');
+        const last = parts.pop();
+        const target = parts.reduce((o, k) => {
+            if (!(k in o)) o[k] = {};
+            return o[k];
+        }, obj);
+        target[last] = value;
+    }
+
+    /**
+     * Save the edited item
+     */
+    saveItemEdits() {
+        if (!this.editingItem || !this.editingCategory) return;
+
+        // Track the edit
+        if (!this.pendingEdits[this.editingCategory]) {
+            this.pendingEdits[this.editingCategory] = {};
+        }
+        this.pendingEdits[this.editingCategory][this.editingItem] = JSON.parse(JSON.stringify(this.editedValues));
+
+        // Mark item as edited in the current data
+        this.editedValues._edited = true;
+
+        // Update the items data
+        const items = this.getItemsForCategory(this.editingCategory);
+        items[this.editingItem] = this.editedValues;
+
+        // If we have a mod active, also update modItems
+        if (this.modLoader.getCurrentMod()) {
+            if (!this.modItems[this.editingCategory]) {
+                this.modItems[this.editingCategory] = { ...this.items[this.editingCategory] };
+            }
+            this.modItems[this.editingCategory][this.editingItem] = this.editedValues;
+        } else {
+            this.items[this.editingCategory][this.editingItem] = this.editedValues;
+        }
+
+        // Show save mod button
+        document.getElementById('save-mod-btn').style.display = 'inline-block';
+
+        // Refresh display
+        this.applyFilters();
+        this.renderItems();
+
+        this.hideEditModal();
+
+        // Update mod changes if viewing that category
+        if (this.currentCategory === 'mod_changes') {
+            this.items['mod_changes'] = this.buildModChangesData();
+            this.applyFilters();
+            this.renderItems();
+        }
+    }
+
+    /**
+     * Save all pending edits to mod folder
+     */
+    async saveMod() {
+        const pendingCount = Object.values(this.pendingEdits).reduce((sum, cat) => sum + Object.keys(cat).length, 0);
+
+        if (pendingCount === 0) {
+            alert('No changes to save.');
+            return;
+        }
+
+        // Check if a mod is selected
+        let currentMod = this.modLoader.getCurrentMod();
+        if (!currentMod) {
+            // Offer to create a new mod first
+            if (confirm('No mod selected. Would you like to create a new mod first?')) {
+                this.showNewModModal();
+            }
+            return;
+        }
+
+        // Ensure we have write access to the mod folder
+        if (!currentMod.directoryHandle) {
+            alert(`Please select the mod folder "${currentMod.name}" to grant write access.`);
+            const handle = await this.modLoader.getModDirectoryHandle();
+            if (!handle) {
+                alert('Could not get write access to mod folder.');
+                return;
+            }
+            // Refresh mod info with handle
+            currentMod = this.modLoader.getCurrentMod();
+        }
+
+        try {
+            const writer = new ModWriter();
+            const result = await writer.writeChanges(currentMod, this.pendingEdits);
+
+            if (result.success) {
+                // Mark edited items as saved (not pending) before clearing
+                for (const [category, items] of Object.entries(this.pendingEdits)) {
+                    for (const itemKey of Object.keys(items)) {
+                        const data = this.getItemsForCategory(category)[itemKey];
+                        if (data) {
+                            data._modded = true;
+                            data._edited = false;
+                        }
+                    }
+                }
+
+                alert(`Saved ${result.filesWritten} file(s) to mod "${currentMod.name}".`);
+
+                // Clear pending edits
+                this.pendingEdits = {};
+                document.getElementById('save-mod-btn').style.display = 'none';
+
+                // Refresh display
+                this.applyFilters();
+                this.renderItems();
+            } else {
+                alert('Failed to save: ' + result.error);
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('Failed to save mod: ' + err.message);
+        }
+    }
+
+    // ============================================================
+    // MOD SELECTION
+    // ============================================================
 
     /**
      * Select and activate a mod
@@ -651,6 +1104,7 @@ class EU5ModHelper {
         const changes = this.modLoader.getModChanges();
         const data = {};
 
+        // Include changes from loaded mod
         for (const change of changes) {
             const key = `${change.category}:${change.key}`;
             data[key] = {
@@ -661,6 +1115,29 @@ class EU5ModHelper {
                 original: change.original,
                 modded: change.modded
             };
+        }
+
+        // Include pending edits (unsaved changes)
+        for (const [category, items] of Object.entries(this.pendingEdits)) {
+            for (const [itemKey, editedData] of Object.entries(items)) {
+                const key = `${category}:${itemKey}`;
+                // Check if this already exists from mod changes
+                if (data[key]) {
+                    data[key]._edited = true;
+                    data[key].modded = editedData;
+                } else {
+                    const originalData = this.items[category]?.[itemKey] || {};
+                    data[key] = {
+                        _changeType: 'edit',
+                        _category: category,
+                        _itemKey: itemKey,
+                        _modName: 'Pending Edit',
+                        _edited: true,
+                        original: originalData,
+                        modded: editedData
+                    };
+                }
+            }
         }
 
         return data;

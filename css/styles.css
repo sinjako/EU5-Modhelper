@@ -874,6 +874,64 @@ body {
 .card-title {
     font-weight: 600;
     font-size: 0.95rem;
+    flex: 1;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.card-badge {
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 3px;
+    text-transform: uppercase;
+}
+
+.modded-badge {
+    background: rgba(97, 175, 239, 0.2);
+    color: var(--val-yes);
+}
+
+.edited-badge {
+    background: rgba(152, 195, 121, 0.2);
+    color: var(--val-str);
+}
+
+.card-edit-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    padding: 4px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.15s;
+}
+
+.item-card:hover .card-edit-btn {
+    opacity: 1;
+}
+
+.card-edit-btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--border);
+    color: var(--accent);
+}
+
+.item-card.modded {
+    border-left: 3px solid var(--val-yes);
+}
+
+.item-card.edited {
+    border-left: 3px solid var(--val-str);
 }
 
 .card-properties {
@@ -1611,4 +1669,244 @@ body {
 
 .tree-node.leaf .tree-node-name {
     font-weight: 400;
+}
+
+/* Edit Modal - Wide variant */
+.modal.modal-wide {
+    max-width: 800px;
+    width: 95%;
+}
+
+/* Editor Container */
+.editor-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.editor-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+
+.btn-small {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+}
+
+/* Editor Content */
+.editor-content {
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.editor-property {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    background: var(--bg-primary);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+}
+
+.editor-property:hover {
+    border-color: var(--text-muted);
+}
+
+.editor-prop-key {
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    min-width: 120px;
+    padding-top: 6px;
+}
+
+.editor-prop-value {
+    flex: 1;
+    min-width: 200px;
+}
+
+.editor-prop-value input,
+.editor-prop-value select {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.editor-prop-value input:focus,
+.editor-prop-value select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.editor-prop-value input.modified {
+    border-color: var(--val-str);
+    background: rgba(152, 195, 121, 0.1);
+}
+
+.editor-prop-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.editor-prop-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+}
+
+.editor-prop-delete:hover {
+    background: rgba(224, 108, 117, 0.2);
+    color: var(--val-no);
+}
+
+/* Nested Properties */
+.editor-nested {
+    width: 100%;
+    margin-top: 8px;
+    padding-left: 20px;
+    border-left: 2px solid var(--border);
+}
+
+.editor-nested-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 4px 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.editor-nested-header:hover {
+    color: var(--text-primary);
+}
+
+.editor-nested-toggle {
+    font-size: 0.65rem;
+    width: 12px;
+}
+
+.editor-nested-content {
+    display: none;
+}
+
+.editor-nested.open .editor-nested-content {
+    display: block;
+}
+
+/* Color Editor */
+.editor-color-preview {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    margin-right: 8px;
+}
+
+.editor-color-inputs {
+    display: flex;
+    gap: 6px;
+}
+
+.editor-color-inputs input {
+    width: 60px;
+    text-align: center;
+}
+
+/* Boolean Toggle */
+.editor-bool-toggle {
+    display: flex;
+    gap: 4px;
+}
+
+.editor-bool-btn {
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.15s;
+}
+
+.editor-bool-btn:first-child {
+    border-radius: 4px 0 0 4px;
+}
+
+.editor-bool-btn:last-child {
+    border-radius: 0 4px 4px 0;
+}
+
+.editor-bool-btn.active-yes {
+    background: rgba(97, 175, 239, 0.2);
+    border-color: var(--val-yes);
+    color: var(--val-yes);
+}
+
+.editor-bool-btn.active-no {
+    background: rgba(224, 108, 117, 0.2);
+    border-color: var(--val-no);
+    color: var(--val-no);
+}
+
+/* Add Property Modal */
+.add-prop-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.add-prop-row input,
+.add-prop-row select {
+    flex: 1;
+    padding: 8px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+/* Save Mod Button */
+#save-mod-btn {
+    background: var(--val-str);
+    color: #000;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+#save-mod-btn:hover {
+    background: #a8d58a;
+}
+
+#save-mod-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
