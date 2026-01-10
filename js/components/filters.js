@@ -233,25 +233,27 @@ class Filters {
                     <button class="match-mode-btn ${this.matchMode === 'any' ? 'active' : ''}" data-mode="any">Any</button>
                     <button class="match-mode-btn ${this.matchMode === 'all' ? 'active' : ''}" data-mode="all">All</button>
                 </div>
-                ${this.filterGroups.map(group => `
-                    <div class="filter-group">
-                        <div class="filter-group-name">${group.name}</div>
-                        <div class="filter-chips">
-                            ${group.values.map(item => {
-                                const key = `${group.key}:${item.value}`;
-                                const state = this.filterStates.get(key) || 'neutral';
-                                return `
-                                    <button class="filter-chip filter-${state}"
-                                            data-key="${key}"
-                                            title="${item.value} (${item.count} items)">
-                                        <span class="chip-label">${this.formatValue(item.value)}</span>
-                                        <span class="chip-count">${item.count}</span>
-                                    </button>
-                                `;
-                            }).join('')}
+                <div class="filter-groups-row">
+                    ${this.filterGroups.map(group => `
+                        <div class="filter-group">
+                            <div class="filter-group-name">${group.name}</div>
+                            <div class="filter-chips">
+                                ${group.values.map(item => {
+                                    const key = `${group.key}:${item.value}`;
+                                    const state = this.filterStates.get(key) || 'neutral';
+                                    return `
+                                        <button class="filter-chip filter-${state}"
+                                                data-key="${key}"
+                                                title="${item.value} (${item.count} items)">
+                                            <span class="chip-label">${this.formatValue(item.value)}</span>
+                                            <span class="chip-count">${item.count}</span>
+                                        </button>
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
-                    </div>
-                `).join('')}
+                    `).join('')}
+                </div>
             </div>
         `;
 

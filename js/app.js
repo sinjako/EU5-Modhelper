@@ -411,61 +411,95 @@ class EU5Inspector {
     }
 
     /**
-     * Dump comprehensive debug info to console
+     * Dump comprehensive debug info to a new window
      */
     dumpDebugInfo() {
-        console.clear();
-        console.log('%c=== EU5 INSPECTOR DEBUG DUMP ===', 'font-size:20px;color:#e94560;font-weight:bold');
-        console.log('Timestamp:', new Date().toISOString());
-        console.log('');
-
-        console.log('%c[1] CURRENT STATE', 'font-size:16px;color:#61afef;font-weight:bold');
-        console.log('  Current category:', this.currentCategory);
-        console.log('  Current handler:', this.currentHandler?.constructor.name);
-        console.log('  Is loaded:', this.isLoaded);
-        console.log('  Search query:', this.searchQuery || '(none)');
-        console.log('');
-
-        console.log('%c[2] RAW DATA', 'font-size:16px;color:#61afef;font-weight:bold');
         const rawItems = this.items[this.currentCategory] || {};
         const rawKeys = Object.keys(rawItems).filter(k => !k.startsWith('_'));
-        console.log('  Total raw items:', rawKeys.length);
-        console.log('  First 5 raw items:');
-        rawKeys.slice(0, 5).forEach(key => {
-            console.log(`    ${key}:`, rawItems[key]);
-        });
-        console.log('');
-
-        console.log('%c[3] FILTERED DATA', 'font-size:16px;color:#61afef;font-weight:bold');
         const filteredItems = this.filteredItems[this.currentCategory] || {};
         const filteredKeys = Object.keys(filteredItems).filter(k => !k.startsWith('_'));
-        console.log('  Filtered items count:', filteredKeys.length);
-        console.log('');
 
-        // Handler-specific debug info
-        if (this.currentHandler && this.currentCategory === 'advances') {
-            const handler = this.currentHandler;
-            const ttData = handler.getTechTreeData();
-            if (ttData) {
-                console.log('%c[4] TECH TREE DATA', 'font-size:16px;color:#61afef;font-weight:bold');
-                const ttKeys = Object.keys(ttData);
-                console.log('  Total advances in tree:', ttKeys.length);
-
-                const byEra = {};
-                ttKeys.forEach(key => {
-                    const era = ttData[key].era;
-                    if (!byEra[era]) byEra[era] = [];
-                    byEra[era].push(key);
-                });
-                console.log('  By era:', Object.fromEntries(
-                    Object.entries(byEra).map(([k, v]) => [k, v.length])
-                ));
-                console.log('  Current era:', handler.getCurrentEra());
-            }
+        let html = `<!DOCTYPE html>
+<html>
+<head>
+    <title>EU5 Inspector - Debug</title>
+    <style>
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Consolas', 'Monaco', monospace;
+            padding: 20px;
+            line-height: 1.6;
         }
+        h1 { color: #e94560; border-bottom: 2px solid #e94560; padding-bottom: 10px; }
+        h2 { color: #61afef; margin-top: 30px; }
+        .section { background: #16213e; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .label { color: #98c379; }
+        .value { color: #e5c07b; }
+        .key { color: #c678dd; }
+        pre {
+            background: #0f0f1a;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #333; }
+        th { color: #61afef; }
+    </style>
+</head>
+<body>
+    <h1>EU5 Inspector Debug Dump</h1>
+    <p>Timestamp: ${new Date().toISOString()}</p>
 
-        console.log('');
-        console.log('%c=== END DEBUG DUMP ===', 'font-size:20px;color:#e94560;font-weight:bold');
+    <h2>1. Current State</h2>
+    <div class="section">
+        <table>
+            <tr><td class="label">Current category:</td><td class="value">${this.currentCategory || '(none)'}</td></tr>
+            <tr><td class="label">Current handler:</td><td class="value">${this.currentHandler?.constructor.name || '(none)'}</td></tr>
+            <tr><td class="label">Is loaded:</td><td class="value">${this.isLoaded}</td></tr>
+            <tr><td class="label">Search query:</td><td class="value">${this.searchQuery || '(none)'}</td></tr>
+        </table>
+    </div>
+
+    <h2>2. Data Summary</h2>
+    <div class="section">
+        <table>
+            <tr><td class="label">Total raw items:</td><td class="value">${rawKeys.length}</td></tr>
+            <tr><td class="label">Filtered items:</td><td class="value">${filteredKeys.length}</td></tr>
+        </table>
+    </div>
+
+    <h2>3. Sample Items (First 10)</h2>
+    <div class="section">
+        <pre>${this.escapeHtml(JSON.stringify(
+            Object.fromEntries(rawKeys.slice(0, 10).map(k => [k, rawItems[k]])),
+            null, 2
+        ))}</pre>
+    </div>
+
+    <h2>4. All Item Keys</h2>
+    <div class="section">
+        <pre>${rawKeys.join('\n')}</pre>
+    </div>
+</body>
+</html>`;
+
+        const debugWindow = window.open('', '_blank', 'width=900,height=700');
+        debugWindow.document.write(html);
+        debugWindow.document.close();
+    }
+
+    /**
+     * Escape HTML for safe display
+     */
+    escapeHtml(str) {
+        return str.replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;');
     }
 }
 
