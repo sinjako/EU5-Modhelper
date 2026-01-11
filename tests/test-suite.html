@@ -43,7 +43,7 @@
     </style>
 </head>
 <body>
-    <h1>EU5 Inspector Test Suite</h1>
+    <h1>EU5 ModHelper Test Suite</h1>
 
     <div class="summary" id="summary">
         <div class="summary-stat"><span>Passed:</span><span id="pass-count">0</span></div>
@@ -55,6 +55,8 @@
         <button class="folder-btn" id="load-btn">Load EU5 Folder</button>
         <button id="run-all">Run All Tests</button>
         <button id="run-parser">Test Parser</button>
+        <button id="run-writer">Test ModWriter</button>
+        <button id="run-creator">Test ModCreator</button>
         <button id="run-tree">Test Tree Builder</button>
         <button id="run-filtering">Test Filtering</button>
         <button id="run-visual">Test Visual Layout</button>
@@ -63,6 +65,9 @@
     <div id="test-output"></div>
 
     <script src="../js/parser.js"></script>
+    <script src="../js/category-registry.js"></script>
+    <script src="../js/mod-writer.js"></script>
+    <script src="../js/mod-creator.js"></script>
     <script>
         // Test state
         const state = {
@@ -196,6 +201,166 @@
             addResult(section, 'Parse advance - requires', adv?.requires === 'parent_advance');
             addResult(section, 'Parse advance - icon', adv?.icon === 'test_icon');
             addResult(section, 'Parse advance - cost', adv?.research_cost === 2.5);
+        }
+
+        // ========== MOD WRITER TESTS ==========
+        async function runModWriterTests() {
+            const section = addSection('ModWriter Tests');
+            const writer = new ModWriter();
+
+            // Test 1: UTF8_BOM constant
+            addResult(section, 'UTF8_BOM constant defined', writer.UTF8_BOM === '\uFEFF');
+
+            // Test 2: Serialize boolean
+            let items = { test: { enabled: true, disabled: false } };
+            let result = writer.generateScript(items, {});
+            addResult(section, 'Serialize boolean true as yes', result.includes('enabled = yes'));
+            addResult(section, 'Serialize boolean false as no', result.includes('disabled = no'));
+
+            // Test 3: Serialize numbers
+            items = { test: { num: 42, neg: -17, dec: 0.5 } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize integer', result.includes('num = 42'));
+            addResult(section, 'Serialize negative', result.includes('neg = -17'));
+            addResult(section, 'Serialize decimal', result.includes('dec = 0.5'));
+
+            // Test 4: Serialize strings
+            items = { test: { simple: 'value', quoted: 'hello world' } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize simple string', result.includes('simple = value'));
+            addResult(section, 'Serialize quoted string', result.includes('quoted = "hello world"'));
+
+            // Test 5: Serialize RGB color
+            items = { test: { color: { _type: 'rgb', r: 255, g: 128, b: 64 } } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize RGB color', result.includes('color = rgb { 255 128 64 }'));
+
+            // Test 6: Serialize HSV color
+            items = { test: { color: { _type: 'hsv', h: 0.5, s: 0.8, v: 0.9 } } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize HSV color', result.includes('hsv {'));
+
+            // Test 7: Serialize date
+            items = { test: { start: { _type: 'date', value: '1444.11.11' } } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize date', result.includes('start = 1444.11.11'));
+
+            // Test 8: Serialize array
+            items = { test: { list: ['a', 'b', 'c'] } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize array', result.includes('list = { a b c }'));
+
+            // Test 9: Skip internal properties
+            items = { test: { _internal: 'skip', visible: 'show' } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Skip internal properties', !result.includes('_internal') && result.includes('visible = show'));
+
+            // Test 10: REPLACE: prefix for existing items
+            items = { sand: { value: 100 } };
+            const baseItems = { sand: { value: 50 } };
+            result = writer.generateScript(items, baseItems);
+            addResult(section, 'Add REPLACE: prefix for existing items', result.includes('REPLACE:sand'));
+
+            // Test 11: No prefix for new items
+            items = { new_item: { value: 100 } };
+            result = writer.generateScript(items, { sand: { value: 50 } });
+            addResult(section, 'No prefix for new items',
+                result.includes('new_item = {') && !result.includes('REPLACE:new_item'));
+
+            // Test 12: Header comment
+            items = { test: { value: 1 } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Include header comment', result.includes('# Generated by EU5 ModHelper'));
+
+            // Test 13: Category path
+            const goodsPath = writer.getCategoryPath('goods');
+            addResult(section, 'Get goods category path', goodsPath === 'in_game/common/goods');
+
+            const religionsPath = writer.getCategoryPath('religions');
+            addResult(section, 'Get religions category path', religionsPath === 'in_game/common/religions');
+
+            // Test 14: Nested object
+            items = { test: { inner: { value: 1 } } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Serialize nested object', result.includes('inner = {') && result.includes('value = 1'));
+
+            // Test 15: Handle null/undefined
+            items = { test: { value: null, other: 'keep' } };
+            result = writer.generateScript(items, {});
+            addResult(section, 'Handle null values', !result.includes('value = null') && result.includes('other = keep'));
+        }
+
+        // ========== MOD CREATOR TESTS ==========
+        async function runModCreatorTests() {
+            const section = addSection('ModCreator Tests');
+            const creator = new ModCreator();
+
+            // Test 1: Generate ID from name
+            let id = creator.generateId('My Mod');
+            addResult(section, 'Generate ID from name', id === 'my_mod', `"${id}"`);
+
+            // Test 2: Generate ID removes special chars
+            id = creator.generateId('My Mod! @#$%');
+            addResult(section, 'Generate ID removes special chars', id === 'my_mod_', `"${id}"`);
+
+            // Test 3: Generate ID handles multiple spaces
+            id = creator.generateId('My   Big   Mod');
+            addResult(section, 'Generate ID handles multiple spaces', id === 'my_big_mod', `"${id}"`);
+
+            // Test 4: Generate ID truncates long names
+            id = creator.generateId('A'.repeat(100));
+            addResult(section, 'Generate ID truncates long names', id.length <= 50, `length=${id.length}`);
+
+            // Test 5: Create metadata
+            const config = {
+                name: 'Test Mod',
+                id: 'test_mod',
+                version: '1.0.0',
+                gameVersion: '1.0.*',
+                description: 'A test mod',
+                tags: ['Gameplay', 'Balance']
+            };
+            const metadata = creator.createMetadata(config);
+            const parsed = JSON.parse(metadata);
+            addResult(section, 'Create metadata - name', parsed.name === 'Test Mod');
+            addResult(section, 'Create metadata - id', parsed.id === 'test_mod');
+            addResult(section, 'Create metadata - version', parsed.version === '1.0.0');
+            addResult(section, 'Create metadata - supported_game_version', parsed.supported_game_version === '1.0.*');
+            addResult(section, 'Create metadata - tags', Array.isArray(parsed.tags) && parsed.tags.length === 2);
+            addResult(section, 'Create metadata - game_custom_data', parsed.game_custom_data?.multiplayer_synchronized === true);
+            addResult(section, 'Create metadata - relationships', Array.isArray(parsed.relationships));
+
+            // Test 6: Create descriptor
+            const descriptor = creator.createDescriptor(config);
+            addResult(section, 'Create descriptor - version', descriptor.includes('version="1.0.0"'));
+            addResult(section, 'Create descriptor - name', descriptor.includes('name="Test Mod"'));
+            addResult(section, 'Create descriptor - supported_version', descriptor.includes('supported_version="1.0.*"'));
+            addResult(section, 'Create descriptor - tags', descriptor.includes('tags={'));
+
+            // Test 7: Create descriptor with path
+            const descriptorWithPath = creator.createDescriptor(config, 'C:/path/to/mod');
+            addResult(section, 'Create descriptor with path', descriptorWithPath.includes('path="C:/path/to/mod"'));
+
+            // Test 8: Create descriptor converts backslashes
+            const descriptorBackslash = creator.createDescriptor(config, 'C:\\path\\to\\mod');
+            addResult(section, 'Create descriptor converts backslashes',
+                descriptorBackslash.includes('path="C:/path/to/mod"') && !descriptorBackslash.includes('\\'));
+
+            // Test 9: Create README
+            const readmeConfig = { ...config, folders: [] };
+            const readme = creator.createReadme(readmeConfig);
+            addResult(section, 'Create README with mod name', readme.includes('# Test Mod'));
+            addResult(section, 'Create README with description', readme.includes('A test mod'));
+
+            // Test 10: Get file list
+            const fileConfig = { ...config, tags: [], folders: ['common', 'events'] };
+            const files = creator.getFileList(fileConfig);
+            const paths = files.map(f => f.path);
+            addResult(section, 'Get file list - metadata.json', paths.includes('.metadata/metadata.json'));
+            addResult(section, 'Get file list - descriptor.mod', paths.includes('descriptor.mod'));
+            addResult(section, 'Get file list - README.md', paths.includes('README.md'));
+            addResult(section, 'Get file list - common folder', paths.includes('in_game/common/.gitkeep'));
+            addResult(section, 'Get file list - events folder', paths.includes('in_game/events/.gitkeep'));
         }
 
         // ========== TREE BUILDER TESTS ==========
@@ -460,6 +625,8 @@
             state.results = { pass: 0, fail: 0, pending: 0 };
             updateSummary();
             await runParserTests();
+            await runModWriterTests();
+            await runModCreatorTests();
             await runTreeTests();
             await runFilteringTests();
             await runVisualTests();
@@ -469,6 +636,18 @@
             output.innerHTML = '';
             state.results = { pass: 0, fail: 0, pending: 0 };
             await runParserTests();
+        };
+
+        document.getElementById('run-writer').onclick = async () => {
+            output.innerHTML = '';
+            state.results = { pass: 0, fail: 0, pending: 0 };
+            await runModWriterTests();
+        };
+
+        document.getElementById('run-creator').onclick = async () => {
+            output.innerHTML = '';
+            state.results = { pass: 0, fail: 0, pending: 0 };
+            await runModCreatorTests();
         };
 
         document.getElementById('run-tree').onclick = async () => {
@@ -489,8 +668,12 @@
             await runVisualTests();
         };
 
-        // Auto-run parser tests on load
-        runParserTests();
+        // Auto-run parser, writer, and creator tests on load
+        (async function() {
+            await runParserTests();
+            await runModWriterTests();
+            await runModCreatorTests();
+        })();
     </script>
 </body>
 </html>

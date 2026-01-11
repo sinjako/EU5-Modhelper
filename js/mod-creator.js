@@ -38,13 +38,20 @@ class ModCreator {
     }
 
     /**
-     * Create descriptor.mod content (legacy format)
+     * Create descriptor.mod content (Paradox format)
      */
-    createDescriptor(config) {
-        return `name = "${config.name}"
-version = "${config.version}"
-supported_version = "${config.gameVersion}"
-path = "mod/${config.id}"
+    createDescriptor(config, modPath = null) {
+        const tags = config.tags && config.tags.length > 0
+            ? config.tags.map(t => `\t"${t}"`).join('\n')
+            : '\t"Gameplay"';
+
+        return `version="${config.version}"
+tags={
+${tags}
+}
+name="${config.name}"
+supported_version="${config.gameVersion}"
+${modPath ? `path="${modPath.replace(/\\/g, '/')}"` : ''}
 `;
     }
 
@@ -82,11 +89,13 @@ ${config.folders.includes('common') ? '├── in_game/\n│   └── commo
 
     /**
      * Get list of files to create
+     * @param {Object} config - Mod configuration
+     * @param {string} modPath - Full path to mod folder (optional, for descriptor.mod)
      */
-    getFileList(config) {
+    getFileList(config, modPath = null) {
         const files = [
             { path: '.metadata/metadata.json', content: this.createMetadata(config) },
-            { path: 'descriptor.mod', content: this.createDescriptor(config) },
+            { path: 'descriptor.mod', content: this.createDescriptor(config, modPath) },
             { path: 'README.md', content: this.createReadme(config) }
         ];
 
@@ -149,10 +158,19 @@ ${config.folders.includes('common') ? '├── in_game/\n│   └── commo
                 await this.writeFileToHandle(modFolder, file.path, file.content);
             }
 
-            return { success: true, method: 'filesystem', path: config.id };
+            return { success: true, method: 'filesystem', path: config.id, handle: modFolder };
         } catch (err) {
             if (err.name === 'AbortError') {
                 return { success: false, cancelled: true };
+            }
+            // Check for permission/security errors
+            if (err.name === 'NotAllowedError' || err.message.includes('system') || err.message.includes('protected')) {
+                throw new Error(
+                    'Cannot write to this folder (protected by your browser).\n\n' +
+                    'Select your USER mods folder:\n' +
+                    'Documents/Paradox Interactive/Europa Universalis V/mod/\n\n' +
+                    'The game will NOT load mods from the installation folder!'
+                );
             }
             console.error('FSA Error:', err);
             throw err;

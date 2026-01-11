@@ -116,15 +116,21 @@ class FileLoader {
     }
 
     /**
-     * Read all .txt files from a directory
+     * Read all script files from a directory
      * @param {string} path - Relative path from root
+     * @param {string|Array} extensions - File extension(s) to read (default: .txt)
      * @returns {Promise<Object>} Combined parsed content from all files
      */
-    async readDirectory(path) {
-        const files = this.getFilesInDirectory(path, '.txt');
+    async readDirectory(path, extensions = '.txt') {
+        // Support multiple extensions
+        const extList = Array.isArray(extensions) ? extensions : [extensions];
+        let allFiles = [];
+        for (const ext of extList) {
+            allFiles = allFiles.concat(this.getFilesInDirectory(path, ext));
+        }
         const combined = {};
 
-        for (const { file } of files) {
+        for (const { file } of allFiles) {
             try {
                 const text = await file.text();
                 const parsed = this.parser.parse(text);

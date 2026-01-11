@@ -275,18 +275,17 @@ const CategoryRegistry = {
             { key: '_sourceFile', name: 'Source File' }
         ]
     },
-    // Advances disabled - handler kept for future use
-    // advances: {
-    //     id: 'advances',
-    //     name: 'Advances',
-    //     icon: '\uD83D\uDCDA',
-    //     path: 'game/in_game/common/advances',
-    //     handler: 'advances',
-    //     filters: [
-    //         { key: 'category', name: 'Advance Category' },
-    //         { key: 'era', name: 'Era' }
-    //     ]
-    // },
+    advances: {
+        id: 'advances',
+        name: 'Advances',
+        icon: '\uD83D\uDCDA',
+        path: 'game/in_game/common/advances',
+        handler: 'default',
+        filters: [
+            { key: 'age', name: 'Age/Era' },
+            { key: '_sourceFile', name: 'Source File' }
+        ]
+    },
     disasters: {
         id: 'disasters',
         name: 'Disasters',
@@ -304,6 +303,31 @@ const CategoryRegistry = {
         filters: [
             { key: 'level', name: 'Level' },
             { key: 'rule', name: 'Rule Type' }
+        ]
+    },
+
+    // =====================
+    // Graphics & UI
+    // =====================
+    graphical_cultures: {
+        id: 'graphical_cultures',
+        name: 'GFX Cultures',
+        icon: '\uD83C\uDFA8',
+        path: 'game/in_game/gfx/graphical_culture_types',
+        handler: 'default',
+        filters: [
+            { key: '_sourceFile', name: 'Source File' }
+        ]
+    },
+    gui_files: {
+        id: 'gui_files',
+        name: 'GUI',
+        icon: '\uD83D\uDDA5',
+        path: 'game/in_game/gui',
+        handler: 'default',
+        extensions: ['.gui'],
+        filters: [
+            { key: '_sourceFile', name: 'Source File' }
         ]
     },
 
@@ -348,7 +372,8 @@ CategoryRegistry.getGrouped = function() {
         'Military & Diplomacy': ['unit_types', 'casus_belli', 'subject_types', 'international_organizations'],
         'Geography & Map': ['climates', 'vegetation', 'topography', 'locations', 'map_definitions'],
         'Modifiers & Scripting': ['modifier_types', 'static_modifiers'],
-        'Characters & Misc': ['traits', 'events', 'disasters', 'formable_countries'],
+        'Characters & Misc': ['traits', 'events', 'advances', 'disasters', 'formable_countries'],
+        'Graphics & UI': ['graphical_cultures', 'gui_files'],
         'Mod Tools': ['mod_changes']
     };
 };

@@ -86,6 +86,19 @@
                     <textarea id="mod-description" rows="3" placeholder="A brief description of your mod..."></textarea>
                 </div>
                 <div class="form-group">
+                    <label>Tags</label>
+                    <div class="checkbox-group checkbox-group-tags">
+                        <label><input type="checkbox" id="tag-gameplay" checked> Gameplay</label>
+                        <label><input type="checkbox" id="tag-balance"> Balance</label>
+                        <label><input type="checkbox" id="tag-events"> Events</label>
+                        <label><input type="checkbox" id="tag-historical"> Historical</label>
+                        <label><input type="checkbox" id="tag-graphics"> Graphics</label>
+                        <label><input type="checkbox" id="tag-sound"> Sound</label>
+                        <label><input type="checkbox" id="tag-translation"> Translation</label>
+                        <label><input type="checkbox" id="tag-utilities"> Utilities</label>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Folders to Include</label>
                     <div class="checkbox-group">
                         <label><input type="checkbox" id="folder-common" checked> common/ (gameplay data)</label>
@@ -95,10 +108,15 @@
                         <label><input type="checkbox" id="folder-gui"> gui/ (interface)</label>
                     </div>
                 </div>
+                <div class="form-note form-note-info">
+                    <strong>Tip:</strong> The mod will be created in memory. Edit items, then save to disk when ready.<br><br>
+                    <strong>Save location:</strong> <code>Documents/Paradox Interactive/Europa Universalis V/mod/</code><br>
+                    <em>Not the game installation folder!</em>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="modal-cancel">Cancel</button>
-                <button class="btn btn-primary" id="modal-create">Create Mod</button>
+                <button class="btn btn-primary" id="modal-create">Create &amp; Start Editing</button>
             </div>
         </div>
     </div>

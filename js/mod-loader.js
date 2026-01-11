@@ -28,9 +28,73 @@ class ModLoader {
     }
 
     /**
-     * Prompt user to select a mod folder
-     * Scans for mods with .metadata/metadata.json or descriptor.mod
+     * Scan for mods from already-loaded FileLoader files
+     * Looks for mods in common locations like 'mod/' or 'mods/' subfolder
+     * @param {Map} files - Files map from FileLoader
      * @returns {Promise<Array>} Array of found mods
+     */
+    async scanFromFiles(files) {
+        // Clear existing mods
+        this.mods.clear();
+        this.modFiles.clear();
+
+        // Group files by potential mod folders (look in 'mod/' or 'mods/' subdirectory)
+        const modFolders = new Map(); // modPath -> files[]
+
+        for (const [filePath, file] of files) {
+            // Check if file is in a 'mod/' or 'mods/' directory
+            let modPrefix = null;
+            let prefixLength = 0;
+
+            if (filePath.startsWith('mod/')) {
+                modPrefix = 'mod/';
+                prefixLength = 4;
+            } else if (filePath.startsWith('mods/')) {
+                modPrefix = 'mods/';
+                prefixLength = 5;
+            }
+
+            if (modPrefix) {
+                const relativePath = filePath.substring(prefixLength);
+                const parts = relativePath.split('/');
+
+                if (parts.length >= 2) {
+                    const modFolder = parts[0];
+                    if (!modFolders.has(modFolder)) {
+                        modFolders.set(modFolder, []);
+                    }
+                    modFolders.get(modFolder).push({
+                        file,
+                        relativePath: parts.slice(1).join('/')
+                    });
+                }
+            }
+        }
+
+        // Scan each potential mod folder for metadata
+        for (const [modFolder, modFileList] of modFolders) {
+            const modInfo = await this._scanModFolder(modFolder, modFileList);
+            if (modInfo) {
+                this.mods.set(modInfo.id, modInfo);
+
+                // Store mod files
+                const fileMap = new Map();
+                for (const { file, relativePath } of modFileList) {
+                    fileMap.set(relativePath, file);
+                }
+                this.modFiles.set(modInfo.id, fileMap);
+            }
+        }
+
+        console.log(`Auto-detected ${this.mods.size} mods from EU5 folder`);
+        return Array.from(this.mods.values());
+    }
+
+    /**
+     * Prompt user to select an external mod folder
+     * Scans for mods with .metadata/metadata.json or descriptor.mod
+     * Adds to existing mods rather than replacing them
+     * @returns {Promise<Array>} Array of newly found mods
      */
     selectModFolder() {
         return new Promise((resolve) => {
@@ -45,9 +109,8 @@ class ModLoader {
                 const firstPath = files[0].webkitRelativePath;
                 const rootFolder = firstPath.split('/')[0];
 
-                // Clear existing mods
-                this.mods.clear();
-                this.modFiles.clear();
+                // Track newly added mods (don't clear existing)
+                const newMods = [];
 
                 // Group files by potential mod folders
                 const modFolders = new Map(); // modPath -> files[]
@@ -74,19 +137,23 @@ class ModLoader {
                 for (const [modFolder, modFileList] of modFolders) {
                     const modInfo = await this._scanModFolder(modFolder, modFileList);
                     if (modInfo) {
-                        this.mods.set(modInfo.id, modInfo);
+                        // Skip if mod already exists
+                        if (!this.mods.has(modInfo.id)) {
+                            this.mods.set(modInfo.id, modInfo);
+                            newMods.push(modInfo);
 
-                        // Store mod files
-                        const fileMap = new Map();
-                        for (const { file, relativePath } of modFileList) {
-                            fileMap.set(relativePath, file);
+                            // Store mod files
+                            const fileMap = new Map();
+                            for (const { file, relativePath } of modFileList) {
+                                fileMap.set(relativePath, file);
+                            }
+                            this.modFiles.set(modInfo.id, fileMap);
                         }
-                        this.modFiles.set(modInfo.id, fileMap);
                     }
                 }
 
-                console.log(`Found ${this.mods.size} mods`);
-                resolve(Array.from(this.mods.values()));
+                console.log(`Found ${newMods.length} new mods (${this.mods.size} total)`);
+                resolve(newMods);
             };
 
             // Reset and trigger
@@ -244,8 +311,8 @@ class ModLoader {
                 startIn: 'documents'
             });
 
-            // Store the handle
-            this.modHandles.set(this.currentMod, handle);
+            // Store the handle (using setModDirectoryHandle to also update mod object)
+            this.setModDirectoryHandle(this.currentMod, handle);
             return handle;
         } catch (err) {
             if (err.name !== 'AbortError') {
@@ -262,6 +329,20 @@ class ModLoader {
      */
     setModDirectoryHandle(modId, handle) {
         this.modHandles.set(modId, handle);
+        // Also set on the mod object for easy access
+        const mod = this.mods.get(modId);
+        if (mod) {
+            mod.directoryHandle = handle;
+        }
+    }
+
+    /**
+     * Get directory handle for the current mod
+     * @returns {FileSystemDirectoryHandle|null}
+     */
+    getCurrentModHandle() {
+        if (!this.currentMod) return null;
+        return this.modHandles.get(this.currentMod) || null;
     }
 
     /**
@@ -414,9 +495,12 @@ class ModLoader {
             } else {
                 // Regular key - check if it's new or modified
                 const isNew = !baseData[key];
-                const isModified = !isNew && JSON.stringify(baseData[key]) !== JSON.stringify(value);
 
-                if (typeof value === 'object' && value !== null) {
+                // Compare without internal properties (those starting with _)
+                const isModified = !isNew && !this._deepEqual(baseData[key], value);
+
+                // Only mark as modded if actually new or modified
+                if ((isNew || isModified) && typeof value === 'object' && value !== null) {
                     value._modded = true;
                     value._modSource = this.getCurrentMod()?.name || 'Unknown Mod';
                 }
@@ -432,6 +516,43 @@ class ModLoader {
         }
 
         return merged;
+    }
+
+    /**
+     * Deep equality check that ignores internal _ prefixed properties
+     * @param {*} a - First value
+     * @param {*} b - Second value
+     * @returns {boolean} True if equal
+     */
+    _deepEqual(a, b) {
+        // Handle primitives
+        if (a === b) return true;
+        if (a === null || b === null) return a === b;
+        if (typeof a !== typeof b) return false;
+        if (typeof a !== 'object') return a === b;
+
+        // Handle arrays
+        if (Array.isArray(a) !== Array.isArray(b)) return false;
+        if (Array.isArray(a)) {
+            if (a.length !== b.length) return false;
+            for (let i = 0; i < a.length; i++) {
+                if (!this._deepEqual(a[i], b[i])) return false;
+            }
+            return true;
+        }
+
+        // Handle objects - ignore _ prefixed keys
+        const keysA = Object.keys(a).filter(k => !k.startsWith('_'));
+        const keysB = Object.keys(b).filter(k => !k.startsWith('_'));
+
+        if (keysA.length !== keysB.length) return false;
+
+        for (const key of keysA) {
+            if (!keysB.includes(key)) return false;
+            if (!this._deepEqual(a[key], b[key])) return false;
+        }
+
+        return true;
     }
 
     /**
@@ -473,7 +594,8 @@ class ModLoader {
             type,
             original,
             modded,
-            modName: this.getCurrentMod()?.name || 'Unknown'
+            modName: this.getCurrentMod()?.name || 'Unknown',
+            source: 'file' // Mark as file-based change
         });
     }
 
@@ -492,6 +614,83 @@ class ModLoader {
      */
     getChangesForCategory(category) {
         return this.getModChanges().filter(c => c.category === category);
+    }
+
+    /**
+     * Clear file-based changes (from mergeData) but keep manual edits
+     */
+    clearFileBasedChanges() {
+        // Keep only changes that came from manual UI edits
+        for (const [key, change] of this.modChanges.entries()) {
+            if (change.source !== 'manual') {
+                this.modChanges.delete(key);
+            }
+        }
+    }
+
+    /**
+     * Track a manual edit made in the UI
+     * @param {string} category - Category of the item
+     * @param {string} key - Item key
+     * @param {Object} original - Original data
+     * @param {Object} modded - Modified data
+     */
+    trackManualEdit(category, key, original, modded) {
+        const currentMod = this.getCurrentMod();
+        if (!currentMod) return;
+
+        // Create a unique key for this change
+        const changeKey = `${category}:${key}`;
+
+        // Determine change type
+        const isNew = !original || Object.keys(original).filter(k => !k.startsWith('_')).length === 0;
+        const changeType = isNew ? 'add' : 'modify';
+
+        // Store the change with source marker
+        this.modChanges.set(changeKey, {
+            category,
+            key,
+            type: changeType,
+            modName: currentMod.name,
+            original: isNew ? null : JSON.parse(JSON.stringify(original)),
+            modded: JSON.parse(JSON.stringify(modded)),
+            source: 'manual' // Mark as manual edit
+        });
+
+    }
+
+    /**
+     * Create a new mod in memory (not saved to disk yet)
+     * @param {Object} config - Mod configuration
+     * @returns {Object} The created mod info
+     */
+    createInMemory(config) {
+        const modInfo = {
+            id: config.id,
+            name: config.name,
+            version: config.version || '1.0.0',
+            description: config.description || '',
+            supportedVersion: config.gameVersion || '1.0.*',
+            tags: config.tags || [],
+            folder: config.id,
+            type: 'in-memory',
+            isNew: true // Flag to indicate this is a new unsaved mod
+        };
+
+        this.mods.set(modInfo.id, modInfo);
+        this.modFiles.set(modInfo.id, new Map()); // Empty files map
+
+        return modInfo;
+    }
+
+    /**
+     * Check if a mod is an unsaved in-memory mod
+     * @param {string} modId - Mod ID to check
+     * @returns {boolean}
+     */
+    isInMemoryMod(modId) {
+        const mod = this.mods.get(modId);
+        return mod && mod.type === 'in-memory';
     }
 
     /**

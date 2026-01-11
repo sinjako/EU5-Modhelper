@@ -201,10 +201,23 @@ class EU5ModHelper {
                 folderInfo.classList.add('loaded');
                 loadBtn.style.display = 'none';
 
-                // Show Load Mods button, New Mod button, and mod selector
-                loadModsBtn.style.display = 'inline-block';
+                // Show New Mod button and mod selector
                 document.getElementById('new-mod-btn').style.display = 'inline-block';
                 modSelector.style.display = 'flex';
+
+                // Auto-detect mods from the EU5 folder
+                const autoMods = await this.modLoader.scanFromFiles(this.loader.files);
+                this.populateModSelector(autoMods);
+
+                // Update folder info with mod count if any found
+                if (autoMods.length > 0) {
+                    folderInfo.textContent = `${this.loader.getFolderName()} - ${autoMods.length} mod(s) detected`;
+                }
+
+                // Show "Load External Mods" button for loading from other locations
+                loadModsBtn.textContent = 'Load External Mods';
+                loadModsBtn.title = 'Load mods from a different folder (e.g., Steam Workshop)';
+                loadModsBtn.style.display = 'inline-block';
 
                 // Load reference data in background
                 this.referenceManager.loadAll();
@@ -403,29 +416,39 @@ class EU5ModHelper {
     }
 
     /**
-     * Load mods from a selected folder
+     * Populate the mod selector dropdown
+     * @param {Array} mods - Array of mod info objects
      */
-    async loadMods() {
-        const mods = await this.modLoader.selectModFolder();
-        if (mods.length === 0) {
-            alert('No mods found in the selected folder.\n\nMods should have a .metadata/metadata.json file or descriptor.mod file.');
-            return;
-        }
-
-        // Populate mod selector
+    populateModSelector(mods) {
         const modSelect = document.getElementById('mod-select');
         modSelect.innerHTML = '<option value="">No Mod (Base Game)</option>';
 
         for (const mod of mods) {
             const option = document.createElement('option');
             option.value = mod.id;
-            option.textContent = `${mod.name} (v${mod.version})`;
+            const suffix = mod.isNew ? ' (new)' : '';
+            option.textContent = `${mod.name} (v${mod.version})${suffix}`;
             modSelect.appendChild(option);
         }
+    }
+
+    /**
+     * Load mods from a selected external folder (adds to existing mods)
+     */
+    async loadMods() {
+        const newMods = await this.modLoader.selectModFolder();
+        if (newMods.length === 0) {
+            alert('No new mods found in the selected folder.\n\nMods should have a .metadata/metadata.json file or descriptor.mod file.\n\nAlready loaded mods are skipped.');
+            return;
+        }
+
+        // Get all mods (auto-detected + newly loaded)
+        const allMods = this.modLoader.getAvailableMods();
+        this.populateModSelector(allMods);
 
         // Show success message
         const folderInfo = document.getElementById('folder-info');
-        folderInfo.textContent = `${this.loader.getFolderName()} - ${mods.length} mod(s) loaded`;
+        folderInfo.textContent = `${this.loader.getFolderName()} - ${allMods.length} mod(s) loaded (+${newMods.length} new)`;
     }
 
     /**
@@ -540,6 +563,23 @@ class EU5ModHelper {
             return;
         }
 
+        // Check if mod ID already exists
+        if (this.modLoader.mods.has(id)) {
+            alert('A mod with this ID already exists. Please choose a different ID.');
+            return;
+        }
+
+        // Collect selected tags
+        const tags = [];
+        if (document.getElementById('tag-gameplay').checked) tags.push('Gameplay');
+        if (document.getElementById('tag-balance').checked) tags.push('Balance');
+        if (document.getElementById('tag-events').checked) tags.push('Events');
+        if (document.getElementById('tag-historical').checked) tags.push('Historical');
+        if (document.getElementById('tag-graphics').checked) tags.push('Graphics');
+        if (document.getElementById('tag-sound').checked) tags.push('Sound');
+        if (document.getElementById('tag-translation').checked) tags.push('Translation');
+        if (document.getElementById('tag-utilities').checked) tags.push('Utilities');
+
         // Collect selected folders
         const folders = [];
         if (document.getElementById('folder-common').checked) folders.push('common');
@@ -548,27 +588,30 @@ class EU5ModHelper {
         if (document.getElementById('folder-gfx').checked) folders.push('gfx');
         if (document.getElementById('folder-gui').checked) folders.push('gui');
 
-        const config = { name, id, version, gameVersion, description, folders };
+        const config = { name, id, version, gameVersion, description, tags, folders };
 
-        try {
-            const creator = new ModCreator();
-            const result = await creator.createMod(config);
+        // Create mod in memory immediately
+        const modInfo = this.modLoader.createInMemory(config);
 
-            if (result.cancelled) {
-                return; // User cancelled
-            }
+        // Update the mod selector dropdown
+        const allMods = this.modLoader.getAvailableMods();
+        this.populateModSelector(allMods);
 
-            this.hideNewModModal();
+        // Select the new mod
+        const modSelect = document.getElementById('mod-select');
+        modSelect.value = id;
+        await this.selectMod(id);
 
-            if (result.method === 'filesystem') {
-                alert(`Mod "${name}" created successfully!\n\nLocation: ${result.path}\n\nYou can now load it using the "Load Mods" button.`);
-            } else {
-                alert(`Mod files downloaded!\n\n${result.message}\n\nCreate the folder structure in your EU5 mods directory.`);
-            }
-        } catch (err) {
-            console.error('Failed to create mod:', err);
-            alert('Failed to create mod: ' + err.message);
-        }
+        // Show save button since this is an unsaved mod
+        document.getElementById('save-mod-btn').style.display = 'inline-block';
+
+        // Update folder info
+        const folderInfo = document.getElementById('folder-info');
+        folderInfo.textContent = `${this.loader.getFolderName()} - Editing: ${name} (unsaved)`;
+
+        this.hideNewModModal();
+
+        alert(`Mod "${name}" created!\n\nYou can now browse categories and edit items.\nClick "Save Mod" when ready to save to disk.`);
     }
 
     // ============================================================
@@ -631,6 +674,30 @@ class EU5ModHelper {
             if (key.startsWith('_')) continue; // Skip internal properties
             container.appendChild(this.renderEditorProperty(key, value, ''));
         }
+
+        // Add event delegation for boolean buttons
+        container.addEventListener('click', (e) => {
+            const boolBtn = e.target.closest('.editor-bool-btn');
+            if (boolBtn) {
+                e.preventDefault();
+                const toggle = boolBtn.closest('.editor-bool-toggle');
+                const path = toggle.dataset.path;
+                const newValue = boolBtn.dataset.boolValue === 'true';
+
+                // Update the value
+                this.updateValue(path, newValue);
+
+                // Update button states
+                toggle.querySelectorAll('.editor-bool-btn').forEach(btn => {
+                    btn.classList.remove('active-yes', 'active-no');
+                });
+                if (newValue) {
+                    boolBtn.classList.add('active-yes');
+                } else {
+                    boolBtn.classList.add('active-no');
+                }
+            }
+        });
     }
 
     /**
@@ -705,9 +772,9 @@ class EU5ModHelper {
 
     createBoolInput(path, value) {
         return `
-            <div class="editor-bool-toggle">
-                <button class="editor-bool-btn ${value ? 'active-yes' : ''}" onclick="eu5App.updateValue('${path}', true)">yes</button>
-                <button class="editor-bool-btn ${!value ? 'active-no' : ''}" onclick="eu5App.updateValue('${path}', false)">no</button>
+            <div class="editor-bool-toggle" data-path="${path}">
+                <button type="button" class="editor-bool-btn ${value ? 'active-yes' : ''}" data-bool-value="true">yes</button>
+                <button type="button" class="editor-bool-btn ${!value ? 'active-no' : ''}" data-bool-value="false">no</button>
             </div>
         `;
     }
@@ -749,7 +816,52 @@ class EU5ModHelper {
 
     createNestedInput(path, value) {
         const keys = Object.keys(value).filter(k => !k.startsWith('_'));
-        return `<span style="color: var(--text-muted); font-size: 0.8rem;">{${keys.length} properties} - nested editing not yet supported</span>`;
+        if (keys.length === 0) {
+            return `<span style="color: var(--text-muted); font-size: 0.8rem;">{empty object}</span>`;
+        }
+
+        let html = `<div class="editor-nested" data-path="${path}">
+            <div class="editor-nested-header" onclick="this.parentElement.classList.toggle('open')">
+                <span class="editor-nested-toggle">▶</span>
+                <span>{${keys.length} properties} - click to expand</span>
+            </div>
+            <div class="editor-nested-content">`;
+
+        for (const key of keys) {
+            const childPath = `${path}.${key}`;
+            const childValue = value[key];
+            html += `<div class="editor-nested-prop" data-path="${childPath}">
+                <span class="editor-nested-key">${key}</span>
+                <div class="editor-nested-value">${this.createValueInput(childPath, childValue)}</div>
+            </div>`;
+        }
+
+        html += `</div></div>`;
+        return html;
+    }
+
+    /**
+     * Create appropriate input for a value based on its type
+     */
+    createValueInput(path, value) {
+        if (value === null || value === undefined) {
+            return this.createTextInput(path, '');
+        } else if (typeof value === 'boolean') {
+            return this.createBoolInput(path, value);
+        } else if (typeof value === 'number') {
+            return this.createNumberInput(path, value);
+        } else if (typeof value === 'string') {
+            return this.createTextInput(path, value);
+        } else if (value._type === 'rgb') {
+            return this.createColorInput(path, value, 'rgb');
+        } else if (value._type === 'hsv') {
+            return this.createColorInput(path, value, 'hsv');
+        } else if (Array.isArray(value)) {
+            return this.createArrayInput(path, value);
+        } else if (typeof value === 'object') {
+            return this.createNestedInput(path, value);
+        }
+        return this.createTextInput(path, String(value));
     }
 
     /**
@@ -819,23 +931,164 @@ class EU5ModHelper {
     }
 
     /**
-     * Add a new property
+     * Add a new property - shows property selector
      */
     addNewProperty() {
-        const propName = prompt('Enter property name:');
-        if (!propName) return;
+        const suggestions = this.getPropertySuggestions();
+        this.showPropertySelector(suggestions);
+    }
 
-        const propType = prompt('Enter type (text, number, bool, array):', 'text');
+    /**
+     * Get property suggestions from other items in the same category
+     */
+    getPropertySuggestions() {
+        const items = this.getItemsForCategory(this.editingCategory);
+        const propCounts = new Map(); // property name -> { count, types: Set }
+        const currentProps = new Set(Object.keys(this.editedValues).filter(k => !k.startsWith('_')));
 
+        for (const [key, item] of Object.entries(items)) {
+            if (key.startsWith('_') || !item || typeof item !== 'object') continue;
+
+            for (const [prop, value] of Object.entries(item)) {
+                if (prop.startsWith('_')) continue;
+                if (currentProps.has(prop)) continue; // Skip props already in current item
+
+                if (!propCounts.has(prop)) {
+                    propCounts.set(prop, { count: 0, types: new Set(), sampleValue: value });
+                }
+                const info = propCounts.get(prop);
+                info.count++;
+                info.types.add(this.detectValueType(value));
+            }
+        }
+
+        // Sort by frequency
+        return Array.from(propCounts.entries())
+            .map(([name, info]) => ({
+                name,
+                count: info.count,
+                type: this.getMostCommonType(info.types),
+                sampleValue: info.sampleValue
+            }))
+            .sort((a, b) => b.count - a.count);
+    }
+
+    /**
+     * Detect value type for property suggestions
+     */
+    detectValueType(value) {
+        if (value === null || value === undefined) return 'text';
+        if (typeof value === 'boolean') return 'bool';
+        if (typeof value === 'number') return 'number';
+        if (Array.isArray(value)) return 'array';
+        if (typeof value === 'object') {
+            if (value._type === 'rgb' || value._type === 'hsv') return 'color';
+            return 'object';
+        }
+        return 'text';
+    }
+
+    /**
+     * Get most common type from a set
+     */
+    getMostCommonType(types) {
+        if (types.size === 1) return types.values().next().value;
+        // Prefer more specific types
+        if (types.has('bool')) return 'bool';
+        if (types.has('number')) return 'number';
+        if (types.has('array')) return 'array';
+        return 'text';
+    }
+
+    /**
+     * Show property selector modal
+     */
+    showPropertySelector(suggestions) {
+        // Remove existing selector if any
+        let selector = document.getElementById('property-selector');
+        if (selector) selector.remove();
+
+        selector = document.createElement('div');
+        selector.id = 'property-selector';
+        selector.className = 'property-selector-modal';
+        selector.innerHTML = `
+            <div class="property-selector-content">
+                <div class="property-selector-header">
+                    <h3>Add Property</h3>
+                    <button class="property-selector-close">&times;</button>
+                </div>
+                <div class="property-selector-custom">
+                    <input type="text" id="custom-prop-name" placeholder="Custom property name...">
+                    <select id="custom-prop-type">
+                        <option value="text">Text</option>
+                        <option value="number">Number</option>
+                        <option value="bool">Boolean</option>
+                        <option value="array">Array</option>
+                    </select>
+                    <button id="add-custom-prop">Add</button>
+                </div>
+                ${suggestions.length > 0 ? `
+                    <div class="property-selector-divider">Or choose from existing properties:</div>
+                    <div class="property-selector-list">
+                        ${suggestions.slice(0, 30).map(s => `
+                            <button class="property-suggestion" data-name="${s.name}" data-type="${s.type}">
+                                <span class="prop-name">${s.name}</span>
+                                <span class="prop-meta">${s.type} · ${s.count} items</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                ` : '<div class="property-selector-empty">No suggestions available</div>'}
+            </div>
+        `;
+
+        document.body.appendChild(selector);
+
+        // Event handlers
+        selector.querySelector('.property-selector-close').addEventListener('click', () => selector.remove());
+        selector.addEventListener('click', (e) => {
+            if (e.target === selector) selector.remove();
+        });
+
+        // Custom property
+        const addCustom = () => {
+            const name = document.getElementById('custom-prop-name').value.trim();
+            const type = document.getElementById('custom-prop-type').value;
+            if (name) {
+                this.addPropertyWithType(name, type);
+                selector.remove();
+            }
+        };
+        document.getElementById('add-custom-prop').addEventListener('click', addCustom);
+        document.getElementById('custom-prop-name').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addCustom();
+        });
+
+        // Suggestion clicks
+        selector.querySelectorAll('.property-suggestion').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.addPropertyWithType(btn.dataset.name, btn.dataset.type);
+                selector.remove();
+            });
+        });
+
+        // Focus input
+        setTimeout(() => document.getElementById('custom-prop-name').focus(), 100);
+    }
+
+    /**
+     * Add property with specific type
+     */
+    addPropertyWithType(name, type) {
         let defaultValue;
-        switch (propType) {
+        switch (type) {
             case 'number': defaultValue = 0; break;
             case 'bool': defaultValue = true; break;
             case 'array': defaultValue = []; break;
+            case 'object': defaultValue = {}; break;
             default: defaultValue = '';
         }
 
-        this.editedValues[propName] = defaultValue;
+        this.editedValues[name] = defaultValue;
         this.renderEditor(this.editedValues);
     }
 
@@ -865,6 +1118,9 @@ class EU5ModHelper {
     saveItemEdits() {
         if (!this.editingItem || !this.editingCategory) return;
 
+        // Get original data for comparison
+        const originalData = this.items[this.editingCategory]?.[this.editingItem] || {};
+
         // Track the edit
         if (!this.pendingEdits[this.editingCategory]) {
             this.pendingEdits[this.editingCategory] = {};
@@ -873,6 +1129,16 @@ class EU5ModHelper {
 
         // Mark item as edited in the current data
         this.editedValues._edited = true;
+
+        // Track change in modLoader for Mod Changes view
+        if (this.modLoader.getCurrentMod()) {
+            this.modLoader.trackManualEdit(
+                this.editingCategory,
+                this.editingItem,
+                originalData,
+                this.editedValues
+            );
+        }
 
         // Update the items data
         const items = this.getItemsForCategory(this.editingCategory);
@@ -897,9 +1163,11 @@ class EU5ModHelper {
 
         this.hideEditModal();
 
-        // Update mod changes if viewing that category
+        // Always update mod changes data (even if not currently viewing)
+        this.items['mod_changes'] = this.buildModChangesData();
+
+        // If viewing mod_changes, refresh the display
         if (this.currentCategory === 'mod_changes') {
-            this.items['mod_changes'] = this.buildModChangesData();
             this.applyFilters();
             this.renderItems();
         }
@@ -911,11 +1179,6 @@ class EU5ModHelper {
     async saveMod() {
         const pendingCount = Object.values(this.pendingEdits).reduce((sum, cat) => sum + Object.keys(cat).length, 0);
 
-        if (pendingCount === 0) {
-            alert('No changes to save.');
-            return;
-        }
-
         // Check if a mod is selected
         let currentMod = this.modLoader.getCurrentMod();
         if (!currentMod) {
@@ -923,6 +1186,74 @@ class EU5ModHelper {
             if (confirm('No mod selected. Would you like to create a new mod first?')) {
                 this.showNewModModal();
             }
+            return;
+        }
+
+        // For new in-memory mods, we need to create the folder structure first
+        if (currentMod.isNew) {
+            if (pendingCount === 0) {
+                alert('No changes to save. Edit some items first, then save.');
+                return;
+            }
+
+            const confirmed = confirm(
+                `Save new mod "${currentMod.name}" to disk?\n\n` +
+                `IMPORTANT: Select your USER mods folder:\n` +
+                `Documents/Paradox Interactive/Europa Universalis V/mod/\n\n` +
+                `NOT the game installation folder!\n` +
+                `The mod folder will be created inside the location you select.`
+            );
+            if (!confirmed) return;
+
+            try {
+                // Create the mod folder structure
+                const creator = new ModCreator();
+                const config = {
+                    name: currentMod.name,
+                    id: currentMod.id,
+                    version: currentMod.version,
+                    gameVersion: currentMod.supportedVersion,
+                    description: currentMod.description,
+                    tags: currentMod.tags,
+                    folders: ['common'] // Default folders
+                };
+
+                const createResult = await creator.createModWithFSA(config);
+                if (createResult.cancelled) return;
+
+                // Use the handle returned from mod creation
+                if (!createResult.handle) {
+                    alert('Could not get write access to mod folder.');
+                    return;
+                }
+
+                // Store the handle for writing changes
+                this.modLoader.setModDirectoryHandle(currentMod.id, createResult.handle);
+
+                // Mark mod as no longer new
+                currentMod.isNew = false;
+                currentMod.type = 'saved';
+
+                // Update dropdown to remove "(new)" suffix
+                const allMods = this.modLoader.getAvailableMods();
+                this.populateModSelector(allMods);
+                document.getElementById('mod-select').value = currentMod.id;
+
+                // Update folder info
+                const folderInfo = document.getElementById('folder-info');
+                folderInfo.textContent = `${this.loader.getFolderName()} - Editing: ${currentMod.name}`;
+
+                // Refresh mod info
+                currentMod = this.modLoader.getCurrentMod();
+            } catch (err) {
+                console.error('Failed to create mod folder:', err);
+                alert('Failed to create mod folder: ' + err.message);
+                return;
+            }
+        }
+
+        if (pendingCount === 0) {
+            alert('No changes to save.');
             return;
         }
 
@@ -940,7 +1271,7 @@ class EU5ModHelper {
 
         try {
             const writer = new ModWriter();
-            const result = await writer.writeChanges(currentMod, this.pendingEdits);
+            const result = await writer.writeChanges(currentMod, this.pendingEdits, this.items);
 
             if (result.success) {
                 // Mark edited items as saved (not pending) before clearing
@@ -1020,6 +1351,11 @@ class EU5ModHelper {
 
         // Special handling for mod_changes category
         if (categoryId === 'mod_changes') {
+            // Scan all categories for mod changes first
+            if (this.modLoader.getCurrentMod()) {
+                document.getElementById('items-grid').innerHTML = '<div class="loading-state">Scanning for mod changes...</div>';
+                await this.scanAllCategoriesForModChanges();
+            }
             this.items[categoryId] = this.buildModChangesData();
             this.applyFilters();
             this.renderItems();
@@ -1036,7 +1372,9 @@ class EU5ModHelper {
                 if (category.specialFile) {
                     data = await this.loader.readFile(category.path + '/' + category.specialFile);
                 } else {
-                    data = await this.loader.readDirectory(category.path);
+                    // Use category-specific extensions or default to .txt
+                    const extensions = category.extensions || '.txt';
+                    data = await this.loader.readDirectory(category.path, extensions);
                 }
                 this.items[categoryId] = data || {};
             }
@@ -1141,6 +1479,50 @@ class EU5ModHelper {
         }
 
         return data;
+    }
+
+    /**
+     * Scan all categories that have mod files to detect changes
+     */
+    async scanAllCategoriesForModChanges() {
+        // Clear previous scan results (but keep manual edits)
+        this.modLoader.clearFileBasedChanges();
+
+        const categories = CategoryRegistry.getAll();
+
+        for (const category of categories) {
+            if (!category.path || category.id === 'mod_changes') continue;
+
+            // Check if mod has files for this category
+            const modFiles = this.modLoader.getModFilesInDirectory(category.path);
+            if (modFiles.length === 0) continue;
+
+            // Load base game data if not already loaded
+            if (!this.items[category.id]) {
+                try {
+                    let data;
+                    if (category.specialFile) {
+                        data = await this.loader.readFile(category.path + '/' + category.specialFile);
+                    } else {
+                        data = await this.loader.readDirectory(category.path);
+                    }
+                    this.items[category.id] = data || {};
+                } catch (err) {
+                    console.error(`Error loading category ${category.id}:`, err);
+                    continue;
+                }
+            }
+
+            // Load and merge mod data to detect changes
+            const modData = await this.loadModDataForCategory(category.id, category);
+            if (modData && Object.keys(modData).length > 0) {
+                this.modItems[category.id] = this.modLoader.mergeData(
+                    this.items[category.id],
+                    modData,
+                    category.id
+                );
+            }
+        }
     }
 
     setupFilters(categoryId) {

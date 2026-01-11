@@ -1,27 +1,36 @@
-# EU5 Inspector
+# EU5 ModHelper
 
-A web-based read-only viewer for Europa Universalis 5 game definitions. Parses Paradox script files and displays them in a searchable, browsable interface.
+A web-based viewer and editor for Europa Universalis 5 game definitions. Parses Paradox script files, displays them in a searchable interface, and allows creating/editing mods.
 
 ## File Structure
 
 ```
-EU5-Inspector/
+EU5-ModHelper/
 ├── index.html                 # Main HTML layout
 ├── css/styles.css             # Dark theme styling
 ├── js/
-│   ├── app.js                 # Main application logic, filtering, routing
+│   ├── app.js                 # Main application logic, filtering, routing, editing
 │   ├── parser.js              # Paradox script parser
 │   ├── loader.js              # File system access (folder picker)
-│   └── components/
-│       ├── filters.js         # 3-state filter chips (neutral/include/exclude)
-│       ├── item-card.js       # Card rendering for items
-│       ├── detail-view.js     # Detail panel for selected items
-│       ├── sidebar.js         # Category sidebar navigation
-│       └── search.js          # Debounced search input
+│   ├── mod-loader.js          # Mod detection, loading, and change tracking
+│   ├── mod-writer.js          # Writes mod files in Paradox format
+│   ├── mod-creator.js         # Creates new mod folder structures
+│   ├── category-registry.js   # Category definitions and paths
+│   ├── reference-manager.js   # Cross-reference management
+│   └── handlers/              # Category-specific handlers
+│       ├── base-handler.js
+│       ├── default-handler.js
+│       ├── advances-handler.js
+│       ├── mod-changes-handler.js
+│       └── ...
 └── tests/
     ├── test-suite.html        # Browser-based visual test suite
-    ├── test-parser.js         # Node.js CLI parser tests
-    └── test-tree.js           # Node.js CLI tech tree tests
+    ├── test-utils.js          # Test framework and utilities
+    ├── test-parser.js         # Parser tests (130+ tests)
+    ├── test-mod-writer.js     # ModWriter serialization tests
+    ├── test-mod-creator.js    # ModCreator tests
+    ├── test-integration.js    # Round-trip and workflow tests
+    └── run-all-tests.js       # Unified test runner for all suites
 ```
 
 ## Architecture
@@ -29,11 +38,18 @@ EU5-Inspector/
 ### Data Flow
 ```
 User selects EU5 folder
-  → loader.js indexes files
+  → loader.js indexes game files
+  → mod-loader.js auto-detects mods in EU5/mod/ folder
   → parser.js converts Paradox script to JS objects
   → app.js stores in this.items[category]
+  → mod-loader.js merges mod changes, tracks modifications
   → filters.js + search.js filter items
-  → item-card.js renders grid
+  → item-card.js renders grid with mod indicators
+
+User edits items
+  → app.js tracks in pendingEdits
+  → mod-writer.js generates Paradox script with REPLACE: prefix
+  → Files saved with UTF-8 BOM encoding
 ```
 
 ### Key Components
@@ -42,9 +58,44 @@ User selects EU5 folder
 |-----------|---------------|
 | `parser.js` | Tokenizes Paradox script: key=value, nested blocks, arrays, rgb/hsv colors, dates |
 | `loader.js` | Uses `webkitdirectory` input for folder selection, validates EU5 structure |
-| `app.js` | Category navigation, tech tree view, filter coordination |
-| `filters.js` | 3-state toggles with ANY/ALL match modes |
-| `item-card.js` | Recursive property rendering with type-based coloring |
+| `mod-loader.js` | Detects mods, loads mod files, tracks changes, manages mod selection |
+| `mod-writer.js` | Generates Paradox script with REPLACE:/INJECT: prefixes, UTF-8 BOM |
+| `mod-creator.js` | Creates mod folder structures with metadata.json and descriptor.mod |
+| `app.js` | Category navigation, editing UI, filter coordination, mod saving |
+
+## EU5 Modding Requirements
+
+**CRITICAL**: EU5 has specific requirements for mods to work:
+
+1. **File Encoding**: All mod files MUST be UTF-8 with BOM (`\uFEFF` at start)
+2. **Override Syntax**: Use `REPLACE:key_name = { }` to override existing game definitions
+3. **New Content**: New items can use regular `key_name = { }` syntax
+4. **Inject Syntax**: Use `INJECT:key_name = { }` to add properties to existing definitions
+5. **Mod Registration**: Mods must be listed in `playsets.json` to be loaded by the game
+
+### Mod Folder Structure
+```
+Documents/Paradox Interactive/Europa Universalis V/mod/your_mod/
+├── .metadata/
+│   └── metadata.json          # Required: name, id, version, tags
+├── descriptor.mod             # Optional: version, name, tags, supported_version
+├── in_game/
+│   └── common/
+│       └── goods/
+│           └── goods_modhelper.txt   # Your changes
+└── README.md
+```
+
+### playsets.json Registration
+Mods are enabled via `Documents/Paradox Interactive/Europa Universalis V/playsets.json`:
+```json
+{
+  "orderedListMods": [{
+    "path": "C:/Users/.../mod/your_mod/",
+    "isEnabled": true
+  }]
+}
+```
 
 ## Paradox Script Format
 
@@ -67,10 +118,11 @@ object_name = {
 ## EU5 Game Structure
 
 Game definitions are in `game/in_game/common/` with 104+ subfolders:
-- `advances/` - Tech tree (uses `requires` for dependencies, `depth = 0` for roots)
+- `advances/` - Technology/research tree
 - `religions/`, `cultures/`, `building_types/`, `government_types/`, etc.
 
-The tech tree viewer filters out country-specific advances (those with `potential` blocks).
+GUI files are in `game/in_game/gui/` with `.gui` extension.
+Graphics definitions are in `game/in_game/gfx/`.
 
 ## Testing
 
@@ -85,41 +137,48 @@ The tech tree viewer filters out country-specific advances (those with `potentia
 
 Run from project root:
 ```bash
-# Parser unit tests (no EU5 folder needed)
-node tests/test-parser.js
+# Run all test suites
+node tests/run-all-tests.js
 
-# Parser + file tests (with EU5 folder)
-node tests/test-parser.js "C:\Path\To\EU5"
+# Run with EU5 folder for file integration tests
+node tests/run-all-tests.js "C:\Path\To\EU5"
 
-# Tech tree tests (requires EU5 folder)
-node tests/test-tree.js "C:\Path\To\EU5"
+# Individual test suites
+node tests/test-parser.js              # Parser tests (41 tests)
+node tests/test-mod-writer.js          # ModWriter tests (40 tests)
+node tests/test-mod-creator.js         # ModCreator tests (29 tests)
+node tests/test-integration.js         # Integration tests (20 tests)
 ```
 
 ### Browser Tests
 
 Open `tests/test-suite.html` in browser:
-1. Click "Load EU5 Folder" and select your EU5 game directory
-2. Click "Run All Tests" or individual test buttons
-3. Tests include: Parser, Tree Builder, Filtering, Visual Layout
+1. Parser, ModWriter, and ModCreator tests run automatically on load
+2. Click "Load EU5 Folder" for file-based tests
+3. Click "Run All Tests" or individual test buttons
 
-### Test Categories
+### Test Coverage
 
-| Test File | What It Tests |
-|-----------|---------------|
-| `tests/test-parser.js` | Paradox script parsing: key-value, nested blocks, arrays, colors, dates |
-| `tests/test-tree.js` | Tech tree: filtering, requirements extraction, orphan detection, connectivity |
-| `tests/test-suite.html` | All above + visual layout tests in browser |
+| Test File | What It Tests | Test Count |
+|-----------|--------------|------------|
+| `test-parser.js` | Parsing: values, blocks, arrays, colors, dates, operators | 41 |
+| `test-mod-writer.js` | Serialization: all types, REPLACE: prefix, category paths | 40 |
+| `test-mod-creator.js` | Mod creation: ID generation, metadata, descriptors, file lists | 29 |
+| `test-integration.js` | Round-trip (parse→serialize→parse), workflows, category registry | 20 |
+| **Total** | | **130** |
 
 ### When to Add Tests
 
 - **Bug fixes**: Add a test that reproduces the bug before fixing
-- **New filters**: Add filtering tests in `runFilteringTests()`
-- **Parser changes**: Add unit tests in `runParserTests()`
-- **Tree logic changes**: Add tests in `test-tree.js`
+- **New features**: Add tests for new functionality
+- **Parser changes**: Add unit tests covering the new syntax
+- **Serialization changes**: Add round-trip tests to ensure correctness
 
 ## Conventions
 
 - Dark theme with CSS variables (--bg-primary, --accent, --val-str, etc.)
 - Value types color-coded: strings=green, numbers=yellow, booleans=blue/red, dates=purple
-- HTML escaping in item-card.js for security
+- HTML escaping for security
 - No external dependencies - vanilla JS only
+- Items modified by mods show a purple "Mod" indicator
+- Pending edits show an orange "Edited" indicator

@@ -132,7 +132,7 @@ class MapDefinitionsHandler extends BaseHandler {
      * Handle node selection
      */
     onNodeSelect(path, level) {
-        console.log('Selected:', path, 'Level:', level);
+        // Node selection callback - can be extended for interactivity
     }
 
     /**

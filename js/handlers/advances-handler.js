@@ -164,8 +164,6 @@ class AdvancesHandler extends BaseHandler {
             delete advances[key];
         }
 
-        console.log(`Tech tree: ${Object.keys(advances).length} universal advances (from 0_age_of_* files), ${roots.length} roots`);
-        console.log(`Filtered: ${filteredNonUniversal} non-universal advances (from other files)`);
 
         return advances;
     }
@@ -226,7 +224,6 @@ class AdvancesHandler extends BaseHandler {
 
         eraRoots.sort((a, b) => a.key.localeCompare(b.key));
 
-        console.log(`Era ${this.currentEra}: ${currentAdvances.length} universal advances, ${eraRoots.length} root trees`);
 
         html += `<div class="tech-era" data-era="${this.currentEra}">`;
         html += `<div class="tech-forest">`;
