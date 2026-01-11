@@ -5,7 +5,7 @@ A browser-based tool for viewing, editing, and creating mods for Europa Universa
 ## Features
 
 - **Browse Game Data** - View all game definitions (goods, religions, cultures, advances, buildings, etc.) in a searchable, filterable interface
-- **Edit Items** - Modify game values directly and see changes in real-time
+- **Edit Items** - Modify game values directly, and see the totality of your staged changes.
 - **Create Mods** - Generate properly structured mod folders with all required metadata
 - **Save Changes** - Write modifications to mod files with correct EU5 formatting (UTF-8 BOM, REPLACE: prefix)
 - **Load Existing Mods** - Auto-detects mods in your EU5 mod folder and shows which items are modded
