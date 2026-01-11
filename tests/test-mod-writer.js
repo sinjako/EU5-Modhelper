@@ -271,6 +271,116 @@ async function runModWriterTests() {
     });
 
     // ==========================================
+    // CATEGORY FILENAMES
+    // ==========================================
+
+    runner.test('Get filename for regular category (goods)', () => {
+        const filename = writer.getCategoryFileName('goods');
+        assert.equal(filename, 'goods_modhelper.txt');
+    });
+
+    runner.test('Get filename for specialFile category (locations)', () => {
+        const filename = writer.getCategoryFileName('locations');
+        assert.equal(filename, 'location_templates.txt');
+    });
+
+    runner.test('Get filename for specialFile category (map_definitions)', () => {
+        const filename = writer.getCategoryFileName('map_definitions');
+        assert.equal(filename, 'definitions.txt');
+    });
+
+    runner.test('Get filename for GUI category uses .gui extension', () => {
+        const filename = writer.getCategoryFileName('gui_files');
+        assert.equal(filename, 'gui_files_modhelper.gui');
+    });
+
+    runner.test('Get filename for unknown category', () => {
+        const filename = writer.getCategoryFileName('nonexistent');
+        assert.equal(filename, 'nonexistent_modhelper.txt');
+    });
+
+    // ==========================================
+    // MAIN_MENU CATEGORY PATHS
+    // ==========================================
+
+    runner.test('Get category path for modifier_types (main_menu)', () => {
+        const path = writer.getCategoryPath('modifier_types');
+        assert.equal(path, 'main_menu/common/modifier_type_definitions');
+    });
+
+    runner.test('Get category path for static_modifiers (main_menu)', () => {
+        const path = writer.getCategoryPath('static_modifiers');
+        assert.equal(path, 'main_menu/common/static_modifiers');
+    });
+
+    runner.test('Get category path for events (in_game, not common)', () => {
+        const path = writer.getCategoryPath('events');
+        assert.equal(path, 'in_game/events');
+    });
+
+    // ==========================================
+    // FULL FILE CATEGORIES (map_data)
+    // ==========================================
+
+    runner.test('Locations category has requiresFullFile flag', () => {
+        const config = CategoryRegistry.get('locations');
+        assert.equal(config.requiresFullFile, true);
+    });
+
+    runner.test('Map definitions category has requiresFullFile flag', () => {
+        const config = CategoryRegistry.get('map_definitions');
+        assert.equal(config.requiresFullFile, true);
+    });
+
+    runner.test('Regular categories do not have requiresFullFile flag', () => {
+        const goods = CategoryRegistry.get('goods');
+        const religions = CategoryRegistry.get('religions');
+        assert.ok(!goods.requiresFullFile);
+        assert.ok(!religions.requiresFullFile);
+    });
+
+    runner.test('mergeIntoBase combines base and edited items', () => {
+        const base = { a: { value: 1 }, b: { value: 2 }, c: { value: 3 } };
+        const edits = { b: { value: 99 } };
+        const merged = writer.mergeIntoBase(base, edits);
+        assert.equal(Object.keys(merged).length, 3);
+        assert.equal(merged.a.value, 1);
+        assert.equal(merged.b.value, 99); // edited
+        assert.equal(merged.c.value, 3);
+    });
+
+    runner.test('mergeIntoBase adds new items from edits', () => {
+        const base = { a: { value: 1 } };
+        const edits = { b: { value: 2 } };
+        const merged = writer.mergeIntoBase(base, edits);
+        assert.equal(Object.keys(merged).length, 2);
+        assert.ok(merged.a);
+        assert.ok(merged.b);
+    });
+
+    runner.test('mergeIntoBase skips internal properties from base', () => {
+        const base = { a: { value: 1 }, _internal: 'skip' };
+        const edits = {};
+        const merged = writer.mergeIntoBase(base, edits);
+        assert.ok(!merged._internal);
+        assert.ok(merged.a);
+    });
+
+    runner.test('generateFullFileScript has no REPLACE: prefix', () => {
+        const items = { location_a: { climate: 'arctic' }, location_b: { climate: 'tropical' } };
+        const result = writer.generateFullFileScript(items, 'locations');
+        assert.ok(!result.includes('REPLACE:'));
+        assert.contains(result, 'location_a = {');
+        assert.contains(result, 'location_b = {');
+    });
+
+    runner.test('generateFullFileScript includes category in header', () => {
+        const items = { test: { value: 1 } };
+        const result = writer.generateFullFileScript(items, 'locations');
+        assert.contains(result, '# Full file replacement for locations');
+    });
+
+    // ==========================================
     // COMPLEX REAL-WORLD ITEMS
     // ==========================================
 

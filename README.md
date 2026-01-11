@@ -75,12 +75,16 @@ Before you can save changes, you need a mod folder:
    - Proper `REPLACE:` prefix for overrides
    - Organized file structure matching EU5 conventions
 
-### Step 7: Enable Your Mod in EU5
+### Step 7: Enable Your Mod in EU5 (Manual)
+
+This step is done outside of ModHelper:
 
 1. Launch Europa Universalis V
-2. Go to the **Mod Manager** / **Playset** screen
-3. Enable your mod in the active playset
+2. Go to the **Mod Manager** / **Playset** screen in the launcher
+3. Find your mod and enable it in the active playset
 4. Start a new game to see your changes
+
+*Note: ModHelper creates the mod files, but you must enable the mod through the game launcher yourself.*
 
 ## Screenshots
 

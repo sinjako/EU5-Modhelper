@@ -206,6 +206,8 @@ const CategoryRegistry = {
         path: 'game/in_game/map_data',
         handler: 'locations',
         specialFile: 'location_templates.txt',
+        // map_data files don't support REPLACE:/INJECT: - must output full file with all entries
+        requiresFullFile: true,
         filters: [
             { key: 'topography', name: 'Terrain' },
             { key: 'vegetation', name: 'Vegetation' },
@@ -220,6 +222,8 @@ const CategoryRegistry = {
         path: 'game/in_game/map_data',
         handler: 'map-definitions',
         specialFile: 'definitions.txt',
+        // map_data files don't support REPLACE:/INJECT: - must output full file with all entries
+        requiresFullFile: true,
         filters: [
             { key: 'type', name: 'Level' }
         ]
