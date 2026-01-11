@@ -14,11 +14,73 @@ A browser-based tool for viewing, editing, and creating mods for Europa Universa
 ## Quick Start
 
 1. Download or clone this repository
-2. Open `index.html` in a modern browser (Chrome, Edge, or Firefox recommended)
-3. Click "Load EU5 Folder" and select your Europa Universalis V game directory
-4. Browse categories in the sidebar, search and filter items
-5. Click any item to view details, click "Edit" to modify values
-6. Create a new mod or load an existing one to save your changes
+2. Open `index.html` in a modern browser (Chrome or Edge recommended)
+3. Follow the workflow below to start modding
+
+## Workflow Tutorial
+
+### Step 1: Load the EU5 Game Folder
+
+1. Click **"Load EU5 Folder"** in the header
+2. Navigate to and select your Europa Universalis V installation directory
+   - Steam default: `C:\Program Files (x86)\Steam\steamapps\common\Europa Universalis V`
+   - The folder should contain a `game` subfolder
+3. Wait for the game data to load - you'll see categories populate in the sidebar
+
+### Step 2: Browse and Find Items to Edit
+
+1. Use the **sidebar** to navigate between categories (Goods, Religions, Buildings, etc.)
+2. Use the **search bar** to find specific items by name
+3. Use **filters** to narrow down results by type or properties
+4. Click any **item card** to view its full details
+5. Items with a purple **"Mod"** badge are already modified by a loaded mod
+
+### Step 3: Set Up Your Mod
+
+Before you can save changes, you need a mod folder:
+
+**Option A: Create a New Mod**
+1. Click **"Create Mod"** in the header
+2. Enter a name for your mod (e.g., "My Balance Changes")
+3. The tool creates the proper folder structure automatically in your EU5 user directory
+
+**Option B: Load an Existing Mod**
+1. Click **"Load Mod Folder"** in the header
+2. Navigate to your mod folder in:
+   `Documents/Paradox Interactive/Europa Universalis V/mod/your_mod/`
+3. Select the mod's root folder (the one containing `.metadata/`)
+
+### Step 4: Edit Items
+
+1. Click on an item to open its detail view
+2. Click the **"Edit"** button to enter edit mode
+3. Click on any **value** to modify it (numbers, strings, booleans, etc.)
+4. Your changes are tracked - edited items show an orange **"Edited"** badge
+5. Click **"Done Editing"** when finished with an item
+
+### Step 5: Review Your Changes
+
+1. Go to the **"Mod Changes"** category in the sidebar
+2. Review all pending edits before saving
+3. You can continue editing or remove changes you don't want
+
+### Step 6: Save to Disk
+
+**Important:** Changes are NOT automatically saved - you must explicitly save them.
+
+1. Click **"Save to Mod"** in the header
+2. Grant file system write permission if prompted by your browser
+3. The tool writes your changes to the mod folder with:
+   - Correct UTF-8 BOM encoding
+   - Proper `REPLACE:` prefix for overrides
+   - Organized file structure matching EU5 conventions
+
+### Step 7: Enable Your Mod in EU5
+
+1. Launch Europa Universalis V
+2. Go to the **Mod Manager** / **Playset** screen
+3. Enable your mod in the active playset
+4. Start a new game to see your changes
 
 ## Screenshots
 
