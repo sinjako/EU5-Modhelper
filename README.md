@@ -33,19 +33,71 @@ Create new mods with proper folder structure, metadata, and descriptor files.
 
 ## Supported Categories
 
+### Core Gameplay
 | Category | Description |
 |----------|-------------|
+| Religions | Religious definitions, holy sites, and modifiers |
+| Cultures | Cultural groups, traditions, and language |
+| Languages | Language definitions |
+
+### Government & Politics
+| Category | Description |
+|----------|-------------|
+| Government Types | Government forms and mechanics |
+| Laws | Legal systems and reforms |
+| Estates | Estate definitions and privileges |
+| Succession | Heir selection and election rules |
+
+### Economy & Buildings
+| Category | Description |
+|----------|-------------|
+| Buildings | Building types, costs, and effects |
 | Goods | Trade goods and resources |
-| Religions | Religious definitions and holy sites |
-| Cultures | Cultural groups and traditions |
+| Pops | Population types and roles |
+| Institutions | Institution spread and effects |
+
+### Military & Diplomacy
+| Category | Description |
+|----------|-------------|
+| Units | Military unit types and stats |
+| Casus Belli | War justifications and goals |
+| Subjects | Subject nation types and rules |
+| Organizations | International organizations |
+
+### Geography & Map
+| Category | Description |
+|----------|-------------|
+| Climates | Climate types and effects |
+| Vegetation | Vegetation and terrain features |
+| Terrain | Topography definitions |
+| Locations | Province templates |
+| Regions | Map region definitions |
+
+### Modifiers & Scripting
+| Category | Description |
+|----------|-------------|
+| Modifiers | Modifier type definitions |
+| Static Modifiers | Permanent modifier effects |
+
+### Characters & Misc
+| Category | Description |
+|----------|-------------|
+| Traits | Character trait definitions |
+| Events | Game events and triggers |
 | Advances | Technology/research tree |
-| Buildings | Building types and effects |
-| Government Types | Government forms and reforms |
-| Units | Military unit definitions |
-| Countries | Country definitions and setup |
-| Events | Game events (view only) |
+| Disasters | Disaster definitions |
+| Formables | Formable nation requirements |
+
+### Graphics & UI
+| Category | Description |
+|----------|-------------|
+| GFX Cultures | Graphical culture types |
 | GUI | User interface definitions |
-| And 20+ more... | |
+
+### Mod Tools
+| Category | Description |
+|----------|-------------|
+| Mod Changes | View all changes made by loaded mods |
 
 ## How Modding Works
 
