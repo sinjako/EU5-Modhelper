@@ -117,9 +117,14 @@ class BaseHandler {
         for (const [key, item] of Object.entries(items)) {
             if (key.startsWith('_')) continue;
 
-            // Search filter
-            if (searchQuery && !key.toLowerCase().includes(searchQuery.toLowerCase())) {
-                continue;
+            // Search filter - searches both key (title) and item content
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                const keyMatches = key.toLowerCase().includes(query);
+                const contentMatches = this.itemContentContains(item, query);
+                if (!keyMatches && !contentMatches) {
+                    continue;
+                }
             }
 
             // Component filters - use handler's extractFilterValues for consistency
@@ -133,6 +138,40 @@ class BaseHandler {
         }
 
         return filtered;
+    }
+
+    /**
+     * Check if item content contains the search query
+     * Recursively searches through all string values in the item
+     * @param {any} item - Item or value to search
+     * @param {string} query - Lowercase search query
+     * @returns {boolean} Whether content contains query
+     */
+    itemContentContains(item, query) {
+        if (!item) return false;
+
+        if (typeof item === 'string') {
+            return item.toLowerCase().includes(query);
+        }
+
+        if (typeof item === 'number') {
+            return String(item).includes(query);
+        }
+
+        if (Array.isArray(item)) {
+            return item.some(v => this.itemContentContains(v, query));
+        }
+
+        if (typeof item === 'object') {
+            for (const [k, v] of Object.entries(item)) {
+                if (k.startsWith('_')) continue; // Skip internal fields
+                // Check both the key name and the value
+                if (k.toLowerCase().includes(query)) return true;
+                if (this.itemContentContains(v, query)) return true;
+            }
+        }
+
+        return false;
     }
 
     /**

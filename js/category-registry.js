@@ -287,6 +287,15 @@ const CategoryRegistry = {
         handler: 'default',
         filters: [
             { key: 'age', name: 'Age/Era' },
+            { key: 'depth', name: 'Root (depth=0)' },
+            { key: 'requires', name: 'Requires' },
+            { key: 'government', name: 'Government' },
+            { key: 'for', name: 'Choice Type' },
+            { key: 'country_type', name: 'Country Type' },
+            { key: 'unlock_building', name: 'Unlocks Building' },
+            { key: 'unlock_unit', name: 'Unlocks Unit' },
+            { key: 'unlock_law', name: 'Unlocks Law' },
+            { key: 'unlock_government_reform', name: 'Unlocks Reform' },
             { key: '_sourceFile', name: 'Source File' }
         ]
     },
